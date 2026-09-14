@@ -471,6 +471,11 @@ dart run build_runner build
   `uid` / `pid` / `protocolVersion` / `selinuxContext`。
 - 文件代理、UserService、Binder 访问尚未接入本插件。
 
+## 🔗 相关项目
+
+* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — 一个用于对接 
+[Shizuku API](https://github.com/RikkaApps/Shizuku-API) 的 Flutter 插件，让你的应用可以以系统权限或 `ADB` 权限执行 `shell` 命令。
+
 ## 💛 Support
 
 If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  

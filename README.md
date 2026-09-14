@@ -490,6 +490,12 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
   receives `uid`, `pid`, `protocolVersion` and `selinuxContext` only.
 - File proxy, UserService and Binder access are not covered by this plugin.
 
+## 🔗 Related Projects
+
+* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — A Flutter plugin to interact 
+with the [Shizuku API](https://github.com/RikkaApps/Shizuku-API), allowing your application to execute `shell` commands with system 
+or `ADB` privileges.
+
 ## 💛 Support
 
 If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  
