@@ -1,7 +1,7 @@
 # Priv Kit
 
 <div align="center">
-   <img src="https://raw.githubusercontent.com/runoob-coder/priv-kit-flutter-plugin/master/priv-kit-mark.svg" width="200" style="width: 200px;" alt="Priv Kit">
+   <img src="https://raw.githubusercontent.com/runoob-coder/priv-kit-flutter-plugin/main/priv-kit-mark.svg" width="200" style="width: 200px;" alt="Priv Kit">
 </div>
 
 An app-owned privileged Android runtime
@@ -15,7 +15,7 @@ Priv Kit supports startup through Root, ADB, Manual, and external authorization 
 [![CI](https://img.shields.io/github/actions/workflow/status/runoob-coder/priv-kit-flutter-plugin/build_apk.yml?label=CI)](https://github.com/runoob-coder/priv-kit-flutter-plugin/actions/workflows/build_apk.yml)
 [![GitHub stars](https://img.shields.io/github/stars/runoob-coder/priv-kit-flutter-plugin.svg?style=social)][GitHub]
 
-English | [简体中文](https://github.com/runoob-coder/priv-kit-flutter-plugin/blob/master/README_CN.md)
+English | [简体中文](https://github.com/runoob-coder/priv-kit-flutter-plugin/blob/main/README_CN.md)
 
 Built on Flutter, this plugin seamlessly bridges [Priv Kit][Priv Kit]'s
 Android runtime, [`priv-core`][priv-core], to the Dart side over platform channels.
