@@ -17,7 +17,7 @@ Android 应用自有特权运行时
 [English](README.md) | 简体中文
 
 本插件基于 Flutter 实现，通过平台通道将 [Priv Kit][Priv Kit]
-的 Android 运行时 `priv-core` 无缝桥接到 Dart 侧。
+的 Android 运行时 [`priv-core`][priv-core] 无缝桥接到 Dart 侧。
 
 > **状态**：预发布阶段。仅支持 Android，API 仍可能调整。
 
@@ -26,7 +26,7 @@ Android 应用自有特权运行时
 Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder 交给你的 App。
 连接建立后，你的 App 本身无需持有特权，即可执行特权命令、查询服务端状态。
 
-本插件覆盖了 `priv-core` 中适合由 Dart 驱动的部分：
+本插件覆盖了 [`priv-core`][priv-core] 中适合由 Dart 驱动的部分：
 
 - **启动方式** — Root、ADB 无线调试、ADB 静态 TCP/IP 端口、手动启动、外部启动
   （例如通过 Shizuku）。
@@ -41,9 +41,9 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 
 | | |
 | --- | --- |
-| 平台 | 仅 Android（不支持 iOS） |
+| 平台 | 仅 Android |
 | Android API | 26+（Android 8.0） |
-| `compileSdk` | 37+（`priv-core` 0.12.0 要求） |
+| `compileSdk` | 37+（`priv-core` 要求） |
 | Dart SDK | ^3.12.0 |
 | Flutter | >=3.44.0 |
 
@@ -55,7 +55,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件已经依赖 `io.github.priv-kit:priv-core:0.12.0`，宿主 App 只需要完成
+插件已经依赖 [`io.github.priv-kit:priv-core`][priv-core]，宿主 App 只需要完成
 Priv Kit 要求的平台侧配置。
 
 请参阅 [Flutter安卓示例项目][Android Example]。
@@ -472,7 +472,7 @@ dart run build_runner build
 
 ## 💛 Support
 
-If `priv_kit` helps you build better UIs, please consider supporting it.  
+If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  
 It only takes a few seconds and helps other Flutter developers discover the library.
 
 - ⭐ [Star on GitHub][GitHub]
@@ -485,8 +485,9 @@ It only takes a few seconds and helps other Flutter developers discover the libr
 </a>
 
 [Priv Kit]: https://priv-kit.pages.dev
+[priv-core]: https://github.com/priv-kit/priv-kit/tree/main/priv-core
 [pub]: https://pub.dev/packages/priv_kit
 [API Reference]: https://pub.dev/documentation/priv_kit/latest/
 [GitHub]: https://github.com/runoob-coder/priv-kit-flutter-plugin
-[Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/blob/master/example/android
+[Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example/android
 [Hidden API]: https://github.com/LSPosed/AndroidHiddenApiBypass

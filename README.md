@@ -17,7 +17,7 @@ Priv Kit supports startup through Root, ADB, Manual, and external authorization 
 English | [简体中文](https://github.com/runoob-coder/priv-kit-flutter-plugin/blob/master/README_CN.md)
 
 Built on Flutter, this plugin seamlessly bridges [Priv Kit][Priv Kit]'s
-Android runtime, `priv-core`, to the Dart side over platform channels.
+Android runtime, [`priv-core`][priv-core], to the Dart side over platform channels.
 
 > **Status:** pre-release. Android only. The API may still change.
 
@@ -27,7 +27,7 @@ Priv Kit starts a separate Privileged Server process and hands your app a
 Binder to it. Once connected you can run privileged commands and query the
 server, without your own app holding the privilege.
 
-This plugin covers the parts of `priv-core` that make sense to drive from Dart:
+This plugin covers the parts of [`priv-core`][priv-core] that make sense to drive from Dart:
 
 - **Startup** — Root, ADB Wireless Debugging, ADB static TCP/IP, manual, and
   external startup (for example through Shizuku).
@@ -45,9 +45,9 @@ Not covered yet: file proxy, UserService, and direct Binder access.
 
 | | |
 | --- | --- |
-| Platform | Android only (iOS is not supported) |
+| Platform | Android only|
 | Android API | 26+ (Android 8.0) |
-| `compileSdk` | 37+ (required by `priv-core` 0.12.0) |
+| `compileSdk` | 37+ (required by `priv-core` ) |
 | Dart SDK | ^3.12.0 |
 | Flutter | >=3.44.0 |
 
@@ -59,8 +59,8 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin already depends on `io.github.priv-kit:priv-core:0.12.0`. Your app
-only needs the platform-side pieces that Priv Kit requires.
+The plugin already depends on [`io.github.priv-kit:priv-core`][priv-core]. 
+Your app only needs the platform-side pieces that Priv Kit requires.
 
 See the [Android Example Project][Android Example].
 
@@ -491,7 +491,7 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
 
 ## 💛 Support
 
-If `priv_kit` helps you build better UIs, please consider supporting it.  
+If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  
 It only takes a few seconds and helps other Flutter developers discover the library.
 
 - ⭐ [Star on GitHub][GitHub]
@@ -504,8 +504,9 @@ It only takes a few seconds and helps other Flutter developers discover the libr
 </a>
 
 [Priv Kit]: https://priv-kit.pages.dev
+[priv-core]: https://github.com/priv-kit/priv-kit/tree/main/priv-core
 [pub]: https://pub.dev/packages/priv_kit
 [API Reference]: https://pub.dev/documentation/priv_kit/latest/
 [GitHub]: https://github.com/runoob-coder/priv-kit-flutter-plugin
-[Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/blob/master/example/android
+[Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example/android
 [Hidden API]: https://github.com/LSPosed/AndroidHiddenApiBypass
