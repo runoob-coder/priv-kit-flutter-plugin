@@ -486,11 +486,12 @@ It only takes a few seconds and helps other Flutter developers discover the libr
 - ⭐ [Star on GitHub][GitHub]
 - 👍 [Like on pub.dev][pub]
 
-## [☕️ Buy Me a Coffee](https://www.noob-coder.com/buy-me-a-coffee)
 
-|                                                                                   Buy Me a Coffee                                                                                   |                                                                                    Donate with PayPal                                                                                     |
-|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| <a href="https://ko-fi.com/noob_coder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/kofi6.webp" alt="Buy Me a Coffee at ko-fi.com" /></a> | <a href="https://paypal.me/runoobcoder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/paypal-donate-button.avif" alt="Donate with PayPal" /></a> |
+## [☕️ 请我喝奶茶](https://www.noob-coder.com/buy-me-a-coffee)
+
+|                                            赞赏码     WeChat                                             |                                          支付宝     Alipay                                           |
+|:-----------------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------:|
+| ![赞赏码WeChat](https://raw.githubusercontent.com/runoob-coder/runoob-coder/main/public/appreciate.avif) | ![支付宝Alipay](https://raw.githubusercontent.com/runoob-coder/runoob-coder/main/public/alipay.avif) |
 
 [Priv Kit]: https://priv-kit.pages.dev
 
