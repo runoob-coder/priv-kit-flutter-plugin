@@ -44,13 +44,13 @@ Not covered yet: file proxy, UserService, and direct Binder access.
 
 ## 📋 Requirements
 
-| | |
-| --- | --- |
-| Platform | Android only|
-| Android API | 26+ (Android 8.0) |
+|              |                                |
+|--------------|--------------------------------|
+| Platform     | Android only                   |
+| Android API  | 26+ (Android 8.0)              |
 | `compileSdk` | 37+ (required by `priv-core` ) |
-| Dart SDK | ^3.12.0 |
-| Flutter | >=3.44.0 |
+| Dart SDK     | ^3.12.0                        |
+| Flutter      | >=3.44.0                       |
 
 ## 📦 Installation
 
@@ -60,7 +60,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin already depends on [`io.github.priv-kit:priv-core`][priv-core]. 
+The plugin already depends on [`io.github.priv-kit:priv-core`][priv-core].
 Your app only needs the platform-side pieces that Priv Kit requires.
 
 See the [Android Example Project][Android Example].
@@ -133,6 +133,7 @@ Only needed if you want the runtime to toggle Wireless Debugging and discover
 the connect port during startup:
 
 ```xml
+
 <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
     tools:ignore="ProtectedPermissions" />
 ```
@@ -170,12 +171,12 @@ print(result.stdoutText);
 
 ## 🔌 Channels
 
-| Type | Name | Payload |
-| --- | --- | --- |
-| `MethodChannel` | `priv_kit` | every call |
-| `EventChannel` | `priv_kit/server_state` | `Privilege.serverState` |
-| `EventChannel` | `priv_kit/startup_log` | startup diagnostics |
-| `EventChannel` | `priv_kit/command/<id>` | streamed output of one command |
+| Type            | Name                    | Payload                        |
+|-----------------|-------------------------|--------------------------------|
+| `MethodChannel` | `priv_kit`              | every call                     |
+| `EventChannel`  | `priv_kit/server_state` | `Privilege.serverState`        |
+| `EventChannel`  | `priv_kit/startup_log`  | startup diagnostics            |
+| `EventChannel`  | `priv_kit/command/<id>` | streamed output of one command |
 
 Each streamed command gets its own channel, because a Flutter `EventChannel`
 name can only back one active broadcast at a time.
@@ -191,15 +192,15 @@ Docs: [getting started](https://priv-kit.pages.dev/guide/getting-started),
 final info = await privKit.startRoot();
 ```
 
-Root startup checks the available `su` path, launches the shared server command, 
+Root startup checks the available `su` path, launches the shared server command,
 and waits for the normal Binder handoff.
 
 ### ADB Wireless Debugging
 
-Wireless Debugging requires Android 11 or later. Priv Kit stores one ADB key for the application. 
+Wireless Debugging requires Android 11 or later. Priv Kit stores one ADB key for the application.
 The device must authorize that key before it can start a Privileged Server.
 
-Ask the user to open Developer options > Wireless debugging > Pair device with pairing code. 
+Ask the user to open Developer options > Wireless debugging > Pair device with pairing code.
 While the pairing screen is open, pass its six-digit code to `privKit.adbPair(pairingCode: )`:
 
 Pairing and starting are independent operations — a successful pair never
@@ -214,7 +215,7 @@ if (!pairing.paired) {
 final info = await privKit.startAdb();
 ```
 
-`adbPair()` discovers the Wireless Debugging pairing port by default. 
+`adbPair()` discovers the Wireless Debugging pairing port by default.
 A host that already discovered the port can make the endpoint explicit:
 
 ```dart
@@ -399,17 +400,17 @@ operation succeeds.
 
 ## 🛠️ ADB helpers
 
-| Call | Purpose |
-| --- | --- |
-| `adbGetIdentityInfo` | this app's ADB identity and key fingerprint |
-| `adbGetActiveTcpPort` / `adbGetConfiguredTcpPort` | static port state |
-| `adbGetWirelessDebuggingControlStatus` | whether Wireless Debugging can be managed |
-| `adbDiscoverPairingPort` / `adbDiscoverConnectPort` | port discovery (API 30+) |
-| `adbPair` / `adbCheckPairing` | pairing |
-| `adbOpenPairingCheckSession` / `adbCheckPairingSession` | polling without reconnecting |
-| `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | authorization |
-| `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp` | control the static port |
-| `closeSession` | release a session handle |
+| Call                                                                                | Purpose                                     |
+|-------------------------------------------------------------------------------------|---------------------------------------------|
+| `adbGetIdentityInfo`                                                                | this app's ADB identity and key fingerprint |
+| `adbGetActiveTcpPort` / `adbGetConfiguredTcpPort`                                   | static port state                           |
+| `adbGetWirelessDebuggingControlStatus`                                              | whether Wireless Debugging can be managed   |
+| `adbDiscoverPairingPort` / `adbDiscoverConnectPort`                                 | port discovery (API 30+)                    |
+| `adbPair` / `adbCheckPairing`                                                       | pairing                                     |
+| `adbOpenPairingCheckSession` / `adbCheckPairingSession`                             | polling without reconnecting                |
+| `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | authorization                               |
+| `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp`                                   | control the static port                     |
+| `closeSession`                                                                      | release a session handle                    |
 
 Sessions are held behind integer handles — always `closeSession` when polling
 stops:
@@ -427,19 +428,19 @@ depends on ADB, so confirm with the user first.
 
 Every failure throws `PrivKitException`:
 
-| code | meaning |
-| --- | --- |
-| `STARTUP_ERROR` | `PrivilegeStartupException` — the server could not start |
-| `SERVER_UNAVAILABLE` | the server Binder is missing or dead |
-| `COMMAND_ERROR` | a command could not start or complete |
-| `COMMAND_TIMEOUT` | a command exceeded its deadline |
-| `INVALID_ARGUMENT` | an argument failed validation |
-| `ILLEGAL_STATE` | the call is not allowed in the current state |
-| `SECURITY_ERROR` | a required Android permission is missing |
-| `CANCELLED` | cancelled via `cancelOperation` |
-| `UNSUPPORTED_API` | the ADB call needs Android 11 (API 30) |
-| `NOT_FOUND` | unknown session handle or external startup bridge id |
-| `NATIVE_ERROR` | any other native failure |
+| code                 | meaning                                                  |
+|----------------------|----------------------------------------------------------|
+| `STARTUP_ERROR`      | `PrivilegeStartupException` — the server could not start |
+| `SERVER_UNAVAILABLE` | the server Binder is missing or dead                     |
+| `COMMAND_ERROR`      | a command could not start or complete                    |
+| `COMMAND_TIMEOUT`    | a command exceeded its deadline                          |
+| `INVALID_ARGUMENT`   | an argument failed validation                            |
+| `ILLEGAL_STATE`      | the call is not allowed in the current state             |
+| `SECURITY_ERROR`     | a required Android permission is missing                 |
+| `CANCELLED`          | cancelled via `cancelOperation`                          |
+| `UNSUPPORTED_API`    | the ADB call needs Android 11 (API 30)                   |
+| `NOT_FOUND`          | unknown session handle or external startup bridge id     |
+| `NATIVE_ERROR`       | any other native failure                                 |
 
 ```dart
 try {
@@ -492,9 +493,9 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
 
 ## 🔗 Related Projects
 
-* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — A Flutter plugin to interact 
-with the [Shizuku API](https://github.com/RikkaApps/Shizuku-API), allowing your application to execute `shell` commands with system 
-or `ADB` privileges.
+* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — A Flutter plugin to interact
+  with the [Shizuku API](https://github.com/RikkaApps/Shizuku-API), allowing your application to
+  execute `shell` commands with system or `ADB` privileges.
 
 ## 💛 Support
 
@@ -504,16 +505,22 @@ It only takes a few seconds and helps other Flutter developers discover the libr
 - ⭐ [Star on GitHub][GitHub]
 - 👍 [Like on pub.dev][pub]
 
-## ☕️ Buy Me a Coffee
+## [☕️ Buy Me a Coffee](https://www.noob-coder.com/buy-me-a-coffee)
 
-<a href="https://ko-fi.com/noob_coder" target="_blank">
-  <img src="https://storage.ko-fi.com/cdn/kofi6.png" alt="Buy Me a Coffee at ko-fi.com" />
-</a>
+|                                                                                   Buy Me a Coffee                                                                                   |                                                                                    Donate with PayPal                                                                                     |
+|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| <a href="https://ko-fi.com/noob_coder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/kofi6.webp" alt="Buy Me a Coffee at ko-fi.com" /></a> | <a href="https://paypal.me/runoobcoder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/paypal-donate-button.avif" alt="Donate with PayPal" /></a> |
 
 [Priv Kit]: https://priv-kit.pages.dev
+
 [priv-core]: https://github.com/priv-kit/priv-kit/tree/main/priv-core
+
 [pub]: https://pub.dev/packages/priv_kit
+
 [API Reference]: https://pub.dev/documentation/priv_kit/latest/
+
 [GitHub]: https://github.com/runoob-coder/priv-kit-flutter-plugin
+
 [Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example/android
+
 [Hidden API]: https://github.com/LSPosed/AndroidHiddenApiBypass

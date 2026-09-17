@@ -40,13 +40,13 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 
 ## 📋 平台要求
 
-| | |
-| --- | --- |
-| 平台 | 仅 Android |
-| Android API | 26+（Android 8.0） |
+|              |                     |
+|--------------|---------------------|
+| 平台           | 仅 Android           |
+| Android API  | 26+（Android 8.0）    |
 | `compileSdk` | 37+（`priv-core` 要求） |
-| Dart SDK | ^3.12.0 |
-| Flutter | >=3.44.0 |
+| Dart SDK     | ^3.12.0             |
+| Flutter      | >=3.44.0            |
 
 ## 📦 安装
 
@@ -127,6 +127,7 @@ dependencies {
 只有希望运行时在启动期间自动开关无线调试、发现连接端口时才需要：
 
 ```xml
+
 <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
     tools:ignore="ProtectedPermissions" />
 ```
@@ -164,12 +165,12 @@ print(result.stdoutText);
 
 ## 🔌 通道
 
-| 类型 | 名称 | 内容 |
-| --- | --- | --- |
-| `MethodChannel` | `priv_kit` | 全部调用 |
-| `EventChannel` | `priv_kit/server_state` | `Privilege.serverState` |
-| `EventChannel` | `priv_kit/startup_log` | 启动过程诊断日志 |
-| `EventChannel` | `priv_kit/command/<id>` | 单个命令的流式输出 |
+| 类型              | 名称                      | 内容                      |
+|-----------------|-------------------------|-------------------------|
+| `MethodChannel` | `priv_kit`              | 全部调用                    |
+| `EventChannel`  | `priv_kit/server_state` | `Privilege.serverState` |
+| `EventChannel`  | `priv_kit/startup_log`  | 启动过程诊断日志                |
+| `EventChannel`  | `priv_kit/command/<id>` | 单个命令的流式输出               |
 
 每个流式命令独占一条通道，因为 Flutter 的 `EventChannel` 同名通道同一时刻
 只能支撑一个广播监听。
@@ -383,17 +384,17 @@ AppOps、SELinux 策略或服务内部授权。因此返回空列表并不代表
 
 ## 🛠️ ADB 辅助能力
 
-| 调用 | 用途 |
-| --- | --- |
-| `adbGetIdentityInfo` | 本 App 的 ADB 身份与密钥指纹 |
-| `adbGetActiveTcpPort` / `adbGetConfiguredTcpPort` | 静态端口状态 |
-| `adbGetWirelessDebuggingControlStatus` | 是否能管理无线调试 |
-| `adbDiscoverPairingPort` / `adbDiscoverConnectPort` | 端口发现（API 30+） |
-| `adbPair` / `adbCheckPairing` | 配对 |
-| `adbOpenPairingCheckSession` / `adbCheckPairingSession` | 轮询时复用连接 |
-| `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | 授权 |
-| `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp` | 控制静态端口 |
-| `closeSession` | 释放会话句柄 |
+| 调用                                                                                  | 用途                  |
+|-------------------------------------------------------------------------------------|---------------------|
+| `adbGetIdentityInfo`                                                                | 本 App 的 ADB 身份与密钥指纹 |
+| `adbGetActiveTcpPort` / `adbGetConfiguredTcpPort`                                   | 静态端口状态              |
+| `adbGetWirelessDebuggingControlStatus`                                              | 是否能管理无线调试           |
+| `adbDiscoverPairingPort` / `adbDiscoverConnectPort`                                 | 端口发现（API 30+）       |
+| `adbPair` / `adbCheckPairing`                                                       | 配对                  |
+| `adbOpenPairingCheckSession` / `adbCheckPairingSession`                             | 轮询时复用连接             |
+| `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | 授权                  |
+| `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp`                                   | 控制静态端口              |
+| `closeSession`                                                                      | 释放会话句柄              |
 
 会话以整型句柄持有，停止轮询后务必 `closeSession`：
 
@@ -410,19 +411,19 @@ await privKit.closeSession(sessionId);
 
 所有失败都会抛出 `PrivKitException`：
 
-| code | 含义 |
-| --- | --- |
-| `STARTUP_ERROR` | `PrivilegeStartupException`，启动失败 |
-| `SERVER_UNAVAILABLE` | 服务端 Binder 不存在或已死亡 |
-| `COMMAND_ERROR` | 命令无法启动或执行失败 |
-| `COMMAND_TIMEOUT` | 命令超过执行时限 |
-| `INVALID_ARGUMENT` | 参数校验失败 |
-| `ILLEGAL_STATE` | 当前状态下不允许该调用 |
-| `SECURITY_ERROR` | 缺少 Android 权限 |
-| `CANCELLED` | 被 `cancelOperation` 取消 |
-| `UNSUPPORTED_API` | 该 ADB 能力需要 Android 11（API 30） |
-| `NOT_FOUND` | 会话句柄或外部启动 bridge id 不存在 |
-| `NATIVE_ERROR` | 其他原生异常 |
+| code                 | 含义                               |
+|----------------------|----------------------------------|
+| `STARTUP_ERROR`      | `PrivilegeStartupException`，启动失败 |
+| `SERVER_UNAVAILABLE` | 服务端 Binder 不存在或已死亡               |
+| `COMMAND_ERROR`      | 命令无法启动或执行失败                      |
+| `COMMAND_TIMEOUT`    | 命令超过执行时限                         |
+| `INVALID_ARGUMENT`   | 参数校验失败                           |
+| `ILLEGAL_STATE`      | 当前状态下不允许该调用                      |
+| `SECURITY_ERROR`     | 缺少 Android 权限                    |
+| `CANCELLED`          | 被 `cancelOperation` 取消           |
+| `UNSUPPORTED_API`    | 该 ADB 能力需要 Android 11（API 30）    |
+| `NOT_FOUND`          | 会话句柄或外部启动 bridge id 不存在          |
+| `NATIVE_ERROR`       | 其他原生异常                           |
 
 ```dart
 try {
@@ -473,8 +474,9 @@ dart run build_runner build
 
 ## 🔗 相关项目
 
-* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — 一个用于对接 
-[Shizuku API](https://github.com/RikkaApps/Shizuku-API) 的 Flutter 插件，让你的应用可以以系统权限或 `ADB` 权限执行 `shell` 命令。
+* [shizuku_api_plugin](https://pub.dev/packages/shizuku_api_plugin) — 一个用于对接
+  [Shizuku API](https://github.com/RikkaApps/Shizuku-API) 的 Flutter 插件，让你的应用可以以系统权限或
+  `ADB` 权限执行 `shell` 命令。
 
 ## 💛 Support
 
@@ -484,16 +486,22 @@ It only takes a few seconds and helps other Flutter developers discover the libr
 - ⭐ [Star on GitHub][GitHub]
 - 👍 [Like on pub.dev][pub]
 
-## ☕️ Buy Me a Coffee
+## [☕️ Buy Me a Coffee](https://www.noob-coder.com/buy-me-a-coffee)
 
-<a href="https://ko-fi.com/noob_coder" target="_blank">
-  <img src="https://storage.ko-fi.com/cdn/kofi6.png" alt="Buy Me a Coffee at ko-fi.com" />
-</a>
+|                                                                                   Buy Me a Coffee                                                                                   |                                                                                    Donate with PayPal                                                                                     |
+|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| <a href="https://ko-fi.com/noob_coder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/kofi6.webp" alt="Buy Me a Coffee at ko-fi.com" /></a> | <a href="https://paypal.me/runoobcoder" target="_blank"><img src="https://github.com/runoob-coder/runoob-coder/raw/main/public/paypal-donate-button.avif" alt="Donate with PayPal" /></a> |
 
 [Priv Kit]: https://priv-kit.pages.dev
+
 [priv-core]: https://github.com/priv-kit/priv-kit/tree/main/priv-core
+
 [pub]: https://pub.dev/packages/priv_kit
+
 [API Reference]: https://pub.dev/documentation/priv_kit/latest/
+
 [GitHub]: https://github.com/runoob-coder/priv-kit-flutter-plugin
+
 [Android Example]: https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example/android
+
 [Hidden API]: https://github.com/LSPosed/AndroidHiddenApiBypass
