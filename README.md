@@ -393,10 +393,14 @@ final granted = await privKit.checkServerPermission(
 final restricted = await privKit.isPermissionRestricted();
 ```
 
-`getDeniedServerPermissions` only covers Android permissions declared by the
-server's packages. It does not cover AppOps, SELinux policy, or the service's
-own authorization, so an empty list does not guarantee that every privileged
-operation succeeds.
+`getDeniedServerPermissions` only covers Android permissions that are declared
+by the server's packages **and defined on the current device** — permissions
+the system does not define are excluded. It does not cover AppOps, SELinux
+policy, or the service's own authorization, so an empty list does not guarantee
+that every privileged operation succeeds.
+
+Since `priv-core` 0.12.1 these results no longer go stale: changing a vendor USB
+debugging security setting is picked up without restarting the server.
 
 ## 🛠️ ADB helpers
 

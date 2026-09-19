@@ -379,8 +379,12 @@ final granted = await privKit.checkServerPermission(
 final restricted = await privKit.isPermissionRestricted();
 ```
 
-`getDeniedServerPermissions` 只覆盖服务端包已声明的 Android 权限，不覆盖
-AppOps、SELinux 策略或服务内部授权。因此返回空列表并不代表所有特权操作都能成功。
+`getDeniedServerPermissions` 只覆盖服务端包已声明**且当前系统已定义**的
+Android 权限——系统未定义的权限会被排除。它不覆盖 AppOps、SELinux 策略或
+服务内部授权，因此返回空列表并不代表所有特权操作都能成功。
+
+从 `priv-core` 0.12.1 起，该结果不再陈旧：修改厂商 USB 调试安全设置后，
+无需重启服务端即可反映到结果中。
 
 ## 🛠️ ADB 辅助能力
 

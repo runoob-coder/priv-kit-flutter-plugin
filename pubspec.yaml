@@ -2,7 +2,7 @@ name: priv_kit
 description: >-
   An app-owned privileged Android runtime: 
   Priv Kit supports startup through Root, ADB, Manual, and external authorization bridges.
-version: 0.0.1
+version: 0.0.2
 homepage: https://priv-kit.pages.dev
 repository: https://github.com/runoob-coder/priv-kit-flutter-plugin
 issue_tracker: https://github.com/runoob-coder/priv-kit-flutter-plugin/issues
