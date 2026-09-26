@@ -1,3 +1,23 @@
+## 0.0.3
+
+### Runtime permission management for any package
+
+Adds three calls that operate on arbitrary packages, where the existing
+`checkServerPermission` only inspects the connected server itself:
+
+- `checkPermission(permission, packageName, userId)` — returns
+  `privilegePermissionGranted` (0) or `privilegePermissionDenied` (-1).
+- `grantRuntimePermission(packageName, permission, userId)`
+- `revokeRuntimePermission(packageName, permission, userId)`
+
+Also adds `isPermissionGranted(...)`, a boolean convenience wrapper over
+`checkPermission`.
+
+`userId` is optional and defaults to the current Android user. Grant and
+revoke require the connected server to hold
+`android.permission.GRANT_RUNTIME_PERMISSIONS`, so check
+`isPermissionRestricted()` first.
+
 ## 0.0.2
 
 ### Upgrade priv-core 0.12.0 → 0.15.0

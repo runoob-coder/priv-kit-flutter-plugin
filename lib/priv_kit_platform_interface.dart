@@ -119,6 +119,49 @@ abstract class PrivKitPlatform extends PlatformInterface {
     );
   }
 
+  /// Checks [permission] against [packageName].
+  ///
+  /// Unlike [checkServerPermission], which inspects the connected server
+  /// itself, this can inspect any package on the device.
+  ///
+  /// Returns [privilegePermissionGranted] (0) or
+  /// [privilegePermissionDenied] (-1).
+  Future<int> checkPermission({
+    required String permission,
+    required String packageName,
+    int? userId,
+  }) {
+    throw UnimplementedError('checkPermission() has not been implemented.');
+  }
+
+  /// Grants [permission] to [packageName].
+  ///
+  /// Requires the connected server to hold
+  /// `android.permission.GRANT_RUNTIME_PERMISSIONS`.
+  Future<void> grantRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) {
+    throw UnimplementedError(
+      'grantRuntimePermission() has not been implemented.',
+    );
+  }
+
+  /// Revokes [permission] from [packageName].
+  ///
+  /// Requires the connected server to hold
+  /// `android.permission.GRANT_RUNTIME_PERMISSIONS`.
+  Future<void> revokeRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) {
+    throw UnimplementedError(
+      'revokeRuntimePermission() has not been implemented.',
+    );
+  }
+
   /// The device-side shell command that starts the native starter.
   Future<String> getNativeStarterCommand() {
     throw UnimplementedError(

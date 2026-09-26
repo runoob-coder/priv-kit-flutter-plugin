@@ -386,6 +386,40 @@ Android 权限——系统未定义的权限会被排除。它不覆盖 AppOps�
 从 `priv-core` 0.12.1 起，该结果不再陈旧：修改厂商 USB 调试安全设置后，
 无需重启服务端即可反映到结果中。
 
+### 任意包的运行时权限
+
+`checkServerPermission` 检查的是服务端自身。要检查或修改**任意包**的权限，
+使用下面这些：
+
+```dart
+// 返回 privilegePermissionGranted (0) 或 privilegePermissionDenied (-1)
+final result = await privKit.checkPermission(
+  permission: 'android.permission.CAMERA',
+  packageName: 'com.example.app',
+);
+
+// 布尔便捷方法
+final ok = await privKit.isPermissionGranted(
+  permission: 'android.permission.CAMERA',
+  packageName: 'com.example.app',
+);
+
+await privKit.grantRuntimePermission(
+  packageName: 'com.example.app',
+  permission: 'android.permission.CAMERA',
+);
+
+await privKit.revokeRuntimePermission(
+  packageName: 'com.example.app',
+  permission: 'android.permission.CAMERA',
+);
+```
+
+`grantRuntimePermission` 与 `revokeRuntimePermission` 需要服务端持有
+`android.permission.GRANT_RUNTIME_PERMISSIONS`，建议先调用
+`isPermissionRestricted()` 确认。三者都接受可选的 `userId`（多用户设备），
+省略时使用当前 Android 用户。
+
 ## 🛠️ ADB 辅助能力
 
 | 调用                                                                                  | 用途                  |

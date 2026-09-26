@@ -64,6 +64,27 @@ class _FakePlatform extends PrivKitPlatform {
   Future<bool> isPermissionRestricted() => Future.value(false);
 
   @override
+  Future<int> checkPermission({
+    required String permission,
+    required String packageName,
+    int? userId,
+  }) => Future.value(privilegePermissionGranted);
+
+  @override
+  Future<void> grantRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) async {}
+
+  @override
+  Future<void> revokeRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) async {}
+
+  @override
   Future<String> getNativeStarterCommand() => Future.value('starter');
 
   @override
@@ -351,6 +372,26 @@ void main() {
       'android.permission.GRANT_RUNTIME_PERMISSIONS',
     );
     await privKit.isPermissionRestricted();
+
+    // Runtime permissions for any package.
+    final granted = await privKit.checkPermission(
+      permission: 'android.permission.CAMERA',
+      packageName: 'com.example.app',
+    );
+    expect(granted, privilegePermissionGranted);
+
+    await privKit.isPermissionGranted(
+      permission: 'android.permission.CAMERA',
+      packageName: 'com.example.app',
+    );
+    await privKit.grantRuntimePermission(
+      packageName: 'com.example.app',
+      permission: 'android.permission.CAMERA',
+    );
+    await privKit.revokeRuntimePermission(
+      packageName: 'com.example.app',
+      permission: 'android.permission.CAMERA',
+    );
 
     // Aggregated output with an explicit capture limit.
     final capped = await privKit.runCommand(

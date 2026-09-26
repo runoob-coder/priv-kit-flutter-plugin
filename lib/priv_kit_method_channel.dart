@@ -7,6 +7,7 @@ import 'priv_kit_platform_interface.dart';
 import 'src/models/adb.dart';
 import 'src/models/command.dart';
 import 'src/models/external_startup.dart';
+import 'src/models/permission.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
 
@@ -124,6 +125,50 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   @override
   Future<bool> isPermissionRestricted() async =>
       await methodChannel.invokeMethod<bool>('isPermissionRestricted') ?? true;
+
+  @override
+  Future<int> checkPermission({
+    required String permission,
+    required String packageName,
+    int? userId,
+  }) async =>
+      await methodChannel.invokeMethod<int>(
+        'checkPermission',
+        <String, Object?>{
+          'permission': permission,
+          'packageName': packageName,
+          'userId': userId,
+        },
+      ) ??
+      privilegePermissionDenied;
+
+  @override
+  Future<void> grantRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) => methodChannel.invokeMethod<void>(
+    'grantRuntimePermission',
+    <String, Object?>{
+      'packageName': packageName,
+      'permission': permission,
+      'userId': userId,
+    },
+  );
+
+  @override
+  Future<void> revokeRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) => methodChannel.invokeMethod<void>(
+    'revokeRuntimePermission',
+    <String, Object?>{
+      'packageName': packageName,
+      'permission': permission,
+      'userId': userId,
+    },
+  );
 
   @override
   Future<String> getNativeStarterCommand() async =>

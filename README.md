@@ -402,6 +402,40 @@ that every privileged operation succeeds.
 Since `priv-core` 0.12.1 these results no longer go stale: changing a vendor USB
 debugging security setting is picked up without restarting the server.
 
+### Runtime permissions for any package
+
+`checkServerPermission` inspects the server itself. To inspect — or change —
+permissions for an arbitrary package, use these instead:
+
+```dart
+// Returns privilegePermissionGranted (0) or privilegePermissionDenied (-1).
+final result = await privKit.checkPermission(
+  permission: 'android.permission.CAMERA',
+  packageName: 'com.example.app',
+);
+
+// Boolean convenience wrapper.
+final ok = await privKit.isPermissionGranted(
+  permission: 'android.permission.CAMERA',
+  packageName: 'com.example.app',
+);
+
+await privKit.grantRuntimePermission(
+  packageName: 'com.example.app',
+  permission: 'android.permission.CAMERA',
+);
+
+await privKit.revokeRuntimePermission(
+  packageName: 'com.example.app',
+  permission: 'android.permission.CAMERA',
+);
+```
+
+`grantRuntimePermission` and `revokeRuntimePermission` require the connected
+server to hold `android.permission.GRANT_RUNTIME_PERMISSIONS`, so check
+`isPermissionRestricted()` first. All three accept an optional `userId` for
+multi-user devices; omitting it uses the current Android user.
+
 ## 🛠️ ADB helpers
 
 | Call                                                                                | Purpose                                     |

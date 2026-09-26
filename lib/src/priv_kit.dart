@@ -7,6 +7,7 @@ import 'exceptions.dart';
 import 'models/adb.dart';
 import 'models/command.dart';
 import 'models/external_startup.dart';
+import 'models/permission.dart';
 import 'models/server_info.dart';
 import 'models/startup_log.dart';
 
@@ -121,6 +122,76 @@ class PrivKit {
   /// Whether the connected server cannot grant runtime permissions.
   Future<bool> isPermissionRestricted() =>
       _guard(_platform.isPermissionRestricted);
+
+  /// Checks [permission] against [packageName].
+  ///
+  /// Unlike [checkServerPermission], which inspects the connected server
+  /// itself, this can inspect any package on the device.
+  ///
+  /// Returns [privilegePermissionGranted] (0) or
+  /// [privilegePermissionDenied] (-1). Omit [userId] to use the current
+  /// Android user.
+  Future<int> checkPermission({
+    required String permission,
+    required String packageName,
+    int? userId,
+  }) => _guard(
+    () => _platform.checkPermission(
+      permission: permission,
+      packageName: packageName,
+      userId: userId,
+    ),
+  );
+
+  /// Whether [packageName] currently holds [permission].
+  ///
+  /// Convenience wrapper over [checkPermission].
+  Future<bool> isPermissionGranted({
+    required String permission,
+    required String packageName,
+    int? userId,
+  }) async =>
+      await checkPermission(
+        permission: permission,
+        packageName: packageName,
+        userId: userId,
+      ) ==
+      privilegePermissionGranted;
+
+  /// Grants [permission] to [packageName].
+  ///
+  /// Requires the connected server to hold
+  /// `android.permission.GRANT_RUNTIME_PERMISSIONS`; use
+  /// [isPermissionRestricted] to check first. Omit [userId] to use the current
+  /// Android user.
+  Future<void> grantRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) => _guard(
+    () => _platform.grantRuntimePermission(
+      packageName: packageName,
+      permission: permission,
+      userId: userId,
+    ),
+  );
+
+  /// Revokes [permission] from [packageName].
+  ///
+  /// Requires the connected server to hold
+  /// `android.permission.GRANT_RUNTIME_PERMISSIONS`. Omit [userId] to use the
+  /// current Android user.
+  Future<void> revokeRuntimePermission({
+    required String packageName,
+    required String permission,
+    int? userId,
+  }) => _guard(
+    () => _platform.revokeRuntimePermission(
+      packageName: packageName,
+      permission: permission,
+      userId: userId,
+    ),
+  );
 
   /// The device-side shell command that starts the native starter.
   ///

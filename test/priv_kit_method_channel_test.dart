@@ -44,6 +44,64 @@ void main() {
     expect(info.selinuxContext, 'u:r:su:s0');
   });
 
+  test('checkPermission forwards permission, package and userId', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          if (methodCall.method == 'checkPermission') {
+            return privilegePermissionGranted;
+          }
+          return null;
+        });
+
+    final result = await platform.checkPermission(
+      permission: 'android.permission.CAMERA',
+      packageName: 'com.example.app',
+      userId: 0,
+    );
+
+    expect(result, privilegePermissionGranted);
+    final call = log.singleWhere((c) => c.method == 'checkPermission');
+    expect(call.arguments['permission'], 'android.permission.CAMERA');
+    expect(call.arguments['packageName'], 'com.example.app');
+    expect(call.arguments['userId'], 0);
+  });
+
+  test(
+    'checkPermission falls back to denied when the call returns null',
+    () async {
+      final result = await platform.checkPermission(
+        permission: 'android.permission.CAMERA',
+        packageName: 'com.example.app',
+      );
+      expect(result, privilegePermissionDenied);
+    },
+  );
+
+  test('grant and revoke runtime permission forward their arguments', () async {
+    await platform.grantRuntimePermission(
+      packageName: 'com.example.app',
+      permission: 'android.permission.CAMERA',
+    );
+    await platform.revokeRuntimePermission(
+      packageName: 'com.example.app',
+      permission: 'android.permission.CAMERA',
+      userId: 10,
+    );
+
+    final granted = log.singleWhere(
+      (c) => c.method == 'grantRuntimePermission',
+    );
+    expect(granted.arguments['packageName'], 'com.example.app');
+    expect(granted.arguments['permission'], 'android.permission.CAMERA');
+    expect(granted.arguments['userId'], isNull);
+
+    final revoked = log.singleWhere(
+      (c) => c.method == 'revokeRuntimePermission',
+    );
+    expect(revoked.arguments['userId'], 10);
+  });
+
   test('getDeniedServerPermissions', () async {
     expect(await platform.getDeniedServerPermissions(), <String>[
       'android.permission.FAKE',

@@ -143,6 +143,48 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 withContext(Dispatchers.IO) { Privilege.isPermissionRestricted() }
             }
 
+            "checkPermission" -> runAsync(result) {
+                val permission = call.requireString("permission")
+                val packageName = call.requireString("packageName")
+                val userId = call.optionalInt("userId")
+                withContext(Dispatchers.IO) {
+                    // A null userId means "the current Android user" upstream.
+                    if (userId == null) {
+                        Privilege.checkPermission(permission, packageName)
+                    } else {
+                        Privilege.checkPermission(permission, packageName, userId)
+                    }
+                }
+            }
+
+            "grantRuntimePermission" -> runAsync(result) {
+                val packageName = call.requireString("packageName")
+                val permission = call.requireString("permission")
+                val userId = call.optionalInt("userId")
+                withContext(Dispatchers.IO) {
+                    if (userId == null) {
+                        Privilege.grantRuntimePermission(packageName, permission)
+                    } else {
+                        Privilege.grantRuntimePermission(packageName, permission, userId)
+                    }
+                }
+                null
+            }
+
+            "revokeRuntimePermission" -> runAsync(result) {
+                val packageName = call.requireString("packageName")
+                val permission = call.requireString("permission")
+                val userId = call.optionalInt("userId")
+                withContext(Dispatchers.IO) {
+                    if (userId == null) {
+                        Privilege.revokeRuntimePermission(packageName, permission)
+                    } else {
+                        Privilege.revokeRuntimePermission(packageName, permission, userId)
+                    }
+                }
+                null
+            }
+
             "getNativeStarterCommand" -> runAsync(result) {
                 // First access inspects the installed APK and must run off the main thread.
                 withContext(Dispatchers.IO) { Privilege.nativeStarterCommand }
