@@ -41,6 +41,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val adb = PrivKitAdb(sessions)
     private lateinit var commands: PrivKitCommands
     private lateinit var files: PrivKitFiles
+    private val userServices = PrivKitUserServices()
     private val operations = HashMap<String, Job>()
     private val operationLock = Any()
     private var serverStateJob: Job? = null
@@ -282,6 +283,31 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     files.invoke(call.method, call)
                 }
 
+                userServices.handles(call.method) -> runAsync(result) {
+                    when (call.method) {
+                        "startUserService" -> {
+                            userServices.start(call)
+                            null
+                        }
+
+                        "bindUserService" -> userServices.bind(call)
+
+                        "unbindUserService" -> {
+                            userServices.unbind(call)
+                            null
+                        }
+
+                        "stopUserService" -> {
+                            userServices.stop(call)
+                            null
+                        }
+
+                        else -> throw IllegalArgumentException(
+                            "Unknown user service method: ${call.method}",
+                        )
+                    }
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -298,6 +324,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         sessions.closeAll()
         commands.closeAll()
         files.closeAll()
+        userServices.closeAll(scope)
         scope.cancel()
     }
 

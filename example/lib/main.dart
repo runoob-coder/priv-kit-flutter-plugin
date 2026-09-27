@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:priv_kit/priv_kit.dart';
 
 void main() {
@@ -281,6 +281,70 @@ class _MyAppState extends State<MyApp> {
     }
   });
 
+  // --- UserService samples -------------------------------------------------
+
+  /// This channel belongs to the example app, not the plugin. A UserService
+  /// returns a Binder, and a Binder cannot cross the platform channel, so the
+  /// example's own Kotlin code binds it and calls the AIDL methods.
+  static const _userServiceChannel = MethodChannel(
+    'priv_kit_example/user_service',
+  );
+
+  PrivUserServiceSpec _userServiceSpec(bool embedded) => PrivUserServiceSpec(
+    serviceClassName: 'com.noob_coder.priv_kit_example.DemoPrivilegeService',
+    tag: embedded ? 'demo-embedded' : 'demo-standalone',
+    embedded: embedded,
+  );
+
+  /// Lifecycle is driven through the plugin: start, then stop.
+  Future<void> _startUserService(bool embedded) => _run(() async {
+    final spec = _userServiceSpec(embedded);
+    await _privKit.startUserService(spec);
+    _log('startUserService -> ${spec.tag} (embedded=$embedded)');
+  });
+
+  /// Dart can hold the connection handle, but cannot call the service with it.
+  Future<void> _bindUserService(bool embedded) => _run(() async {
+    final handle = await _privKit.bindUserService(_userServiceSpec(embedded));
+    _log(
+      'bindUserService -> handle=$handle（Binder 无法传给 Dart，'
+      '调用请见下面的示例）',
+    );
+    await _privKit.unbindUserService(handle);
+    _log('unbindUserService -> handle=$handle');
+  });
+
+  /// The real call path: the example's Kotlin side binds the service, converts
+  /// the Binder with asInterface and invokes the AIDL method.
+  Future<void> _callDemoUserService(bool embedded) => _run(() async {
+    final uid = await _userServiceChannel.invokeMethod<String>(
+      'call',
+      <String, Object?>{'embedded': embedded, 'method': 'getUid'},
+    );
+    _log('IDemoPrivilegeService.getUid() -> $uid');
+
+    final isEmbedded = await _userServiceChannel.invokeMethod<bool>(
+      'call',
+      <String, Object?>{'embedded': embedded, 'method': 'isEmbedded'},
+    );
+    _log('IDemoPrivilegeService.isEmbedded() -> $isEmbedded');
+
+    final sum = await _userServiceChannel.invokeMethod<int>(
+      'call',
+      <String, Object?>{
+        'embedded': embedded,
+        'method': 'add',
+        'args': <String, Object?>{'a': 20, 'b': 22},
+      },
+    );
+    _log('IDemoPrivilegeService.add(20, 22) -> $sum');
+  });
+
+  Future<void> _stopUserService(bool embedded) => _run(() async {
+    await _privKit.stopUserService(_userServiceSpec(embedded));
+    _log('stopUserService -> ${_userServiceSpec(embedded).tag}');
+  });
+
   @override
   Widget build(BuildContext context) {
     final server = _server;
@@ -364,6 +428,14 @@ class _MyAppState extends State<MyApp> {
               onRead: _fileReadSample,
               onList: _fileListSample,
               onDelete: _fileDeleteSample,
+            ),
+            const SizedBox(height: 12),
+            _UserServicePanel(
+              enabled: server != null && !_busy,
+              onStart: _startUserService,
+              onBind: _bindUserService,
+              onCall: _callDemoUserService,
+              onStop: _stopUserService,
             ),
             const SizedBox(height: 16),
             Text('日志', style: Theme.of(context).textTheme.titleSmall),
@@ -689,6 +761,87 @@ class _CommandPanelState extends State<_CommandPanel> {
             Text(
               '不提供 stdin 或 PTY：不支持交互式程序、终端信号与 ANSI 渲染。',
               style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Drives the demo UserService through both the plugin and the app's own
+/// channel, which is how a real app has to reach its AIDL methods.
+class _UserServicePanel extends StatefulWidget {
+  const _UserServicePanel({
+    required this.enabled,
+    required this.onStart,
+    required this.onBind,
+    required this.onCall,
+    required this.onStop,
+  });
+
+  final bool enabled;
+  final Future<void> Function(bool embedded) onStart;
+  final Future<void> Function(bool embedded) onBind;
+  final Future<void> Function(bool embedded) onCall;
+  final Future<void> Function(bool embedded) onStop;
+
+  @override
+  State<_UserServicePanel> createState() => _UserServicePanelState();
+}
+
+class _UserServicePanelState extends State<_UserServicePanel> {
+  /// Embedded services run inside the server process, the default standalone
+  /// mode uses a dedicated child process.
+  var _embedded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.enabled;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('UserService', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在特权进程。'
+              '插件的 start/stop 由 Dart 控制；调用自定义方法必须走 App 自己的'
+              ' Kotlin 通道（见 DemoUserServiceBridge）。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('嵌入式（embedded）'),
+              subtitle: const Text('开启后服务跑在 Privileged Server 进程内'),
+              value: _embedded,
+              onChanged: enabled
+                  ? (value) => setState(() => _embedded = value)
+                  : null,
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: enabled ? () => widget.onStart(_embedded) : null,
+                  child: const Text('启动'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? () => widget.onBind(_embedded) : null,
+                  child: const Text('绑定（拿句柄）'),
+                ),
+                FilledButton.tonal(
+                  onPressed: enabled ? () => widget.onCall(_embedded) : null,
+                  child: const Text('调用 AIDL 方法'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? () => widget.onStop(_embedded) : null,
+                  child: const Text('停止'),
+                ),
+              ],
             ),
           ],
         ),

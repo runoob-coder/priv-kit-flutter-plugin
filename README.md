@@ -447,6 +447,115 @@ subscription stops the walk.
 `entry.metadata` is null when the server can enumerate a name but cannot read
 its attributes — such entries are emitted but never entered.
 
+## 🔌 UserService
+
+Docs: [UserService](https://priv-kit.pages.dev/guide/user-service).
+
+A UserService runs **your own Kotlin class** with the server's privileges. It
+is the only mechanism here that executes app-defined code — the file proxy,
+command execution and Binder access all use capabilities priv-core already
+provides.
+
+> **Read this first:** a UserService returns a Binder, and **a Binder cannot
+> cross the platform channel**. Dart can drive the lifecycle, but calling your
+> AIDL methods has to happen in Kotlin.
+
+### Defining the service
+
+Put the interface under `android/app/src/main/aidl/<your/package>/` and switch
+AIDL compilation on — it is **off by default**, and without it the generated
+interface does not exist:
+
+```kotlin
+// android/app/build.gradle.kts
+android {
+    buildFeatures {
+        aidl = true
+    }
+}
+```
+
+No extra dependency is needed for `kotlinx-coroutines-android`: priv-core
+publishes it in its `api` variant, so it already reaches your app.
+
+AIDL interface — the `destroy` transaction code must be `16777114`:
+
+```java
+interface IMyPrivilegeService {
+    void destroy() = 16777114;
+    String getUid() = 1;
+}
+```
+
+Kotlin implementation:
+
+```kotlin
+class MyPrivilegeService : IMyPrivilegeService.Stub {
+    private var appContext: Context? = null
+
+    @Keep constructor() : super()
+    @Keep constructor(context: Context) : super() { appContext = context }
+
+    override fun getUid() = "uid=${Process.myUid()}"
+
+    override fun destroy() {
+        // A dedicated process owns its lifetime; an embedded one must not exit.
+        if (!PrivilegeUserServiceEnvironment.isEmbedded) exitProcess(0)
+    }
+}
+```
+
+Both constructors are secondary on purpose: on the JVM `Context?` and `Context`
+erase to the same signature, so a primary constructor taking `Context?` clashes
+with a secondary constructor taking `Context`.
+
+### Driving the lifecycle from Dart
+
+```dart
+const spec = PrivUserServiceSpec(
+  serviceClassName: 'com.example.MyPrivilegeService',
+  tag: 'main',
+  version: 1,
+  embedded: false,
+  daemon: false,
+);
+
+await privKit.startUserService(spec);
+
+// Dart can hold the connection handle, but cannot call the service with it.
+final handle = await privKit.bindUserService(spec);
+await privKit.unbindUserService(handle);
+
+await privKit.stopUserService(spec);
+```
+
+An instance is identified by `serviceClassName` plus `tag`. Bump `version` when
+the implementation is no longer compatible, and the runtime replaces the
+running instance.
+
+### Calling your service
+
+Convert the Binder in Kotlin and expose the result over a channel of your own.
+The example app does exactly this in `DemoUserServiceBridge`:
+
+```kotlin
+val connection = Privilege.bindUserService(spec)
+try {
+    val service = IMyPrivilegeService.Stub.asInterface(connection.binder)
+    service.uid
+} finally {
+    connection.unbind()
+}
+```
+
+### Embedded vs dedicated
+
+- **Default** — a dedicated `app_process` child process. Its `destroy()` owns
+  the process and exits with `exitProcess(0)`.
+- **`embedded = true`** — runs inside the Privileged Server process. Binding is
+  faster and skips process startup, but `destroy()` may only release the
+  service's own resources.
+
 ## 🔄 Server lifecycle
 
 ```dart

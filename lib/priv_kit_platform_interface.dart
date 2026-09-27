@@ -10,6 +10,7 @@ import 'src/models/external_startup.dart';
 import 'src/models/file.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
+import 'src/models/user_service.dart';
 
 import 'dart:typed_data';
 
@@ -176,6 +177,30 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// Cancels a start operation previously launched with [operationId].
   Future<void> cancelOperation(String operationId) {
     throw UnimplementedError('cancelOperation() has not been implemented.');
+  }
+
+  /// Starts an app-defined UserService.
+  Future<void> startUserService(PrivUserServiceSpec spec) {
+    throw UnimplementedError('startUserService() has not been implemented.');
+  }
+
+  /// Binds an app-defined UserService and returns a connection handle.
+  ///
+  /// The underlying Binder cannot cross the platform channel, so Dart cannot
+  /// call the service's own AIDL methods. The handle exists so Dart can manage
+  /// the connection lifetime through [unbindUserService].
+  Future<int> bindUserService(PrivUserServiceSpec spec) {
+    throw UnimplementedError('bindUserService() has not been implemented.');
+  }
+
+  /// Releases a connection handle returned by [bindUserService].
+  Future<void> unbindUserService(int connectionHandle) {
+    throw UnimplementedError('unbindUserService() has not been implemented.');
+  }
+
+  /// Stops an app-defined UserService.
+  Future<void> stopUserService(PrivUserServiceSpec spec) {
+    throw UnimplementedError('stopUserService() has not been implemented.');
   }
 
   /// Reads one metadata snapshot of [path].

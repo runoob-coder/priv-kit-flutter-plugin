@@ -35,6 +35,13 @@ android {
         }
     }
 
+    buildFeatures {
+        // Required: AIDL is not compiled unless it is switched on. Without this
+        // the demo UserService fails to compile with
+        // "Unresolved reference 'IDemoPrivilegeService'".
+        aidl = true
+    }
+
     // minSdk is below Android 10, so the native starter must be extracted from
     // the APK instead of being executed in place by the platform linker.
     packaging {
@@ -67,6 +74,10 @@ android {
 dependencies {
     // Required by Priv Kit to reach the hidden platform APIs it relies on.
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+
+    // kotlinx-coroutines-android is deliberately not declared here: priv-core
+    // publishes it in its api variant and the plugin depends on priv-core with
+    // `api`, so it already reaches this module. Verified by building without it.
 }
 
 kotlin {

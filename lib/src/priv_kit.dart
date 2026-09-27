@@ -12,6 +12,7 @@ import 'models/file.dart';
 import 'models/permission.dart';
 import 'models/server_info.dart';
 import 'models/startup_log.dart';
+import 'models/user_service.dart';
 
 /// Dart entry point of the Priv Kit plugin.
 ///
@@ -195,6 +196,34 @@ class PrivKit {
       userId: userId,
     ),
   );
+
+  /// Starts an app-defined UserService.
+  ///
+  /// The service is a Kotlin class you write, implementing an AIDL interface,
+  /// and it runs with the server's privileges. See [bindUserService] for how to
+  /// reach it.
+  Future<void> startUserService(PrivUserServiceSpec spec) =>
+      _guard(() => _platform.startUserService(spec));
+
+  /// Binds an app-defined UserService and returns a connection handle.
+  ///
+  /// **The Binder cannot cross the platform channel**, so Dart cannot call the
+  /// service's own AIDL methods. This call exists so Dart can manage the
+  /// connection lifetime: keep the handle and pass it to [unbindUserService].
+  ///
+  /// To invoke your service's methods, bind it from Kotlin, convert the Binder
+  /// with `YourService.Stub.asInterface(connection.binder)` and expose the
+  /// result to Dart through your own method channel.
+  Future<int> bindUserService(PrivUserServiceSpec spec) =>
+      _guard(() => _platform.bindUserService(spec));
+
+  /// Releases a connection handle returned by [bindUserService].
+  Future<void> unbindUserService(int connectionHandle) =>
+      _guard(() => _platform.unbindUserService(connectionHandle));
+
+  /// Stops an app-defined UserService.
+  Future<void> stopUserService(PrivUserServiceSpec spec) =>
+      _guard(() => _platform.stopUserService(spec));
 
   /// Reads one metadata snapshot of [path].
   ///

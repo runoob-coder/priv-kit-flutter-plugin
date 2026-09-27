@@ -430,6 +430,109 @@ await for (final entry in privKit.fileWalk('/data/local/tmp', maxDepth: 1)) {
 `entry.metadata` 为 null 表示服务端能枚举该名字但读不到它的属性——这类条目
 会被发出但不会进入。
 
+## 🔌 UserService
+
+文档：[UserService](https://priv-kit.pages.dev/zh/guide/user-service)。
+
+UserService 让**你自己写的 Kotlin 类**以服务端权限运行。它是本插件里唯一能执行
+「应用自定义代码」的机制——文件代理、命令执行、Binder 访问用的都是 priv-core
+已经提供好的能力。
+
+> **先读这条**：UserService 返回的是 Binder，而 **Binder 无法通过平台通道传递**。
+> Dart 可以驱动生命周期，但调用你自己的 AIDL 方法必须写在 Kotlin 侧。
+
+### 定义服务
+
+把接口放在 `android/app/src/main/aidl/<你的包名>/` 下，并开启 AIDL 编译——
+它**默认是关闭的**，不开启则生成的接口类根本不存在：
+
+```kotlin
+// android/app/build.gradle.kts
+android {
+    buildFeatures {
+        aidl = true
+    }
+}
+```
+
+`kotlinx-coroutines-android` 不需要额外声明：priv-core 把它发布在 `api`
+变体里，会自动传递到你的 App。
+
+AIDL 接口——`destroy` 的 transaction code 必须是 `16777114`：
+
+```java
+interface IMyPrivilegeService {
+    void destroy() = 16777114;
+    String getUid() = 1;
+}
+```
+
+Kotlin 实现：
+
+```kotlin
+class MyPrivilegeService : IMyPrivilegeService.Stub {
+    private var appContext: Context? = null
+
+    @Keep constructor() : super()
+    @Keep constructor(context: Context) : super() { appContext = context }
+
+    override fun getUid() = "uid=${Process.myUid()}"
+
+    override fun destroy() {
+        // 独立进程拥有自己的生命周期；嵌入式服务不能退出共享进程
+        if (!PrivilegeUserServiceEnvironment.isEmbedded) exitProcess(0)
+    }
+}
+```
+
+两个构造器**刻意都写成次级构造器**：在 JVM 上 `Context?` 与 `Context` 擦除后
+签名相同，若主构造器取 `Context?`，会与取 `Context` 的次级构造器冲突。
+
+### 由 Dart 驱动生命周期
+
+```dart
+const spec = PrivUserServiceSpec(
+  serviceClassName: 'com.example.MyPrivilegeService',
+  tag: 'main',
+  version: 1,
+  embedded: false,
+  daemon: false,
+);
+
+await privKit.startUserService(spec);
+
+// Dart 能持有连接句柄，但无法用它调用服务方法
+final handle = await privKit.bindUserService(spec);
+await privKit.unbindUserService(handle);
+
+await privKit.stopUserService(spec);
+```
+
+实例由 `serviceClassName` + `tag` 标识。实现不再兼容时提升 `version`，运行时会
+替换掉旧的运行实例。
+
+### 调用你自己的服务
+
+在 Kotlin 侧把 Binder 转成 AIDL 接口，再通过你自己的通道回传结果。示例 App 的
+`DemoUserServiceBridge` 就是这么做的：
+
+```kotlin
+val connection = Privilege.bindUserService(spec)
+try {
+    val service = IMyPrivilegeService.Stub.asInterface(connection.binder)
+    service.uid
+} finally {
+    connection.unbind()
+}
+```
+
+### 嵌入式与独立进程
+
+- **默认** —— 独立的 `app_process` 子进程。它的 `destroy()` 拥有进程，用
+  `exitProcess(0)` 退出。
+- **`embedded = true`** —— 跑在 Privileged Server 进程内。绑定更快、省去进程
+  启动，但 `destroy()` 只能清理服务自身资源。
+
 ## 🔄 服务端生命周期
 
 ```dart

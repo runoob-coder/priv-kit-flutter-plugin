@@ -12,6 +12,7 @@ import 'src/models/file.dart';
 import 'src/models/permission.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
+import 'src/models/user_service.dart';
 
 /// An implementation of [PrivKitPlatform] that uses method channels.
 class MethodChannelPrivKit extends PrivKitPlatform {
@@ -184,6 +185,25 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       methodChannel.invokeMethod<void>('cancelOperation', <String, Object?>{
         'operationId': operationId,
       });
+
+  @override
+  Future<void> startUserService(PrivUserServiceSpec spec) =>
+      methodChannel.invokeMethod<void>('startUserService', spec.toMap());
+
+  @override
+  Future<int> bindUserService(PrivUserServiceSpec spec) async =>
+      await methodChannel.invokeMethod<int>('bindUserService', spec.toMap()) ??
+      -1;
+
+  @override
+  Future<void> unbindUserService(int connectionHandle) =>
+      methodChannel.invokeMethod<void>('unbindUserService', <String, Object?>{
+        'connectionHandle': connectionHandle,
+      });
+
+  @override
+  Future<void> stopUserService(PrivUserServiceSpec spec) =>
+      methodChannel.invokeMethod<void>('stopUserService', spec.toMap());
 
   @override
   Future<PrivFileMetadata> fileMetadata(

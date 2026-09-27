@@ -88,6 +88,18 @@ class _FakePlatform extends PrivKitPlatform {
   Future<String> getNativeStarterCommand() => Future.value('starter');
 
   @override
+  Future<void> startUserService(PrivUserServiceSpec spec) async {}
+
+  @override
+  Future<int> bindUserService(PrivUserServiceSpec spec) => Future.value(1);
+
+  @override
+  Future<void> unbindUserService(int connectionHandle) async {}
+
+  @override
+  Future<void> stopUserService(PrivUserServiceSpec spec) async {}
+
+  @override
   Future<PrivFileMetadata> fileMetadata(
     String path, {
     bool followSymbolicLinks = false,
@@ -487,6 +499,15 @@ void main() {
     await privKit.pingServer();
     await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
     await privKit.shutdownServer();
+
+    // UserService: Dart drives the lifecycle, Kotlin calls the AIDL methods.
+    const userServiceSpec = PrivUserServiceSpec(
+      serviceClassName: 'com.example.MyService',
+    );
+    await privKit.startUserService(userServiceSpec);
+    final connection = await privKit.bindUserService(userServiceSpec);
+    await privKit.unbindUserService(connection);
+    await privKit.stopUserService(userServiceSpec);
 
     // File proxy: metadata, streams and walking.
     const path = '/data/local/tmp/priv_kit_demo';

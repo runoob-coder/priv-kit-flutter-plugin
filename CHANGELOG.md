@@ -1,3 +1,32 @@
+## 0.0.6
+
+### UserService
+
+Exposes `priv.kit.core.userservice` — the only mechanism here that runs
+**app-defined code** with the server's privileges:
+
+- `startUserService` / `stopUserService` — drive the lifecycle from Dart.
+- `bindUserService` / `unbindUserService` — bind and release a connection,
+  identified by an integer handle.
+
+`PrivUserServiceSpec` carries `serviceClassName`, `tag`, `version`, `embedded`
+and `daemon`.
+
+**A Binder cannot cross the platform channel**, so Dart cannot call the
+service's own AIDL methods — `bindUserService` exists only so Dart can manage
+the connection lifetime. Invoking the service has to happen in Kotlin:
+
+```kotlin
+val service = IMyService.Stub.asInterface(connection.binder)
+```
+
+The example app adds `IDemoPrivilegeService.aidl`, `DemoPrivilegeService` and
+`DemoUserServiceBridge` (its own method channel) to show that split.
+
+The plugin now depends on priv-core with `api` instead of `implementation`: its
+public API exposes priv-core types, and host apps that write a UserService or
+register an external startup bridge need them on the compile classpath.
+
 ## 0.0.5
 
 ### File proxy

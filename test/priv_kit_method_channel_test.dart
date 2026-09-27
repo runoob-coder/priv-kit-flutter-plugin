@@ -102,6 +102,68 @@ void main() {
     expect(revoked.arguments['userId'], 10);
   });
 
+  test('startUserService forwards the whole spec', () async {
+    await platform.startUserService(
+      const PrivUserServiceSpec(
+        serviceClassName: 'com.example.MyService',
+        tag: 'main',
+        version: 3,
+        embedded: true,
+        daemon: true,
+      ),
+    );
+
+    final call = log.singleWhere((c) => c.method == 'startUserService');
+    expect(call.arguments['serviceClassName'], 'com.example.MyService');
+    expect(call.arguments['tag'], 'main');
+    expect(call.arguments['version'], 3);
+    expect(call.arguments['embedded'], true);
+    expect(call.arguments['daemon'], true);
+  });
+
+  test('bindUserService returns the connection handle', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return 42;
+        });
+
+    final handle = await platform.bindUserService(
+      const PrivUserServiceSpec(serviceClassName: 'com.example.MyService'),
+    );
+
+    expect(handle, 42);
+    final call = log.singleWhere((c) => c.method == 'bindUserService');
+    // Defaults are filled in on the Dart side.
+    expect(call.arguments['tag'], privilegeUserServiceDefaultTag);
+    expect(call.arguments['version'], 1);
+    expect(call.arguments['embedded'], false);
+    expect(call.arguments['daemon'], false);
+  });
+
+  test(
+    'unbindUserService and stopUserService forward their arguments',
+    () async {
+      await platform.unbindUserService(7);
+      await platform.stopUserService(
+        const PrivUserServiceSpec(serviceClassName: 'com.example.MyService'),
+      );
+
+      expect(
+        log
+            .singleWhere((c) => c.method == 'unbindUserService')
+            .arguments['connectionHandle'],
+        7,
+      );
+      expect(
+        log
+            .singleWhere((c) => c.method == 'stopUserService')
+            .arguments['serviceClassName'],
+        'com.example.MyService',
+      );
+    },
+  );
+
   test('fileMetadata decodes the metadata snapshot', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
