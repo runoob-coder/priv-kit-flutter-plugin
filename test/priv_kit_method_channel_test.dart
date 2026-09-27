@@ -102,6 +102,125 @@ void main() {
     expect(revoked.arguments['userId'], 10);
   });
 
+  test('fileMetadata decodes the metadata snapshot', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return <String, Object?>{
+            'absolutePath': '/data/local/tmp/a.txt',
+            'sizeBytes': 12,
+            'lastModifiedMillis': 1000,
+            'unixMode': 33188,
+            'uid': 0,
+            'gid': 0,
+            'type': 'REGULAR_FILE',
+          };
+        });
+
+    final metadata = await platform.fileMetadata('/data/local/tmp/a.txt');
+    expect(metadata.name, 'a.txt');
+    expect(metadata.sizeBytes, 12);
+    expect(metadata.type, PrivFileType.regularFile);
+    expect(metadata.lastModified, DateTime.fromMillisecondsSinceEpoch(1000));
+
+    final call = log.singleWhere((c) => c.method == 'fileMetadata');
+    expect(call.arguments['path'], '/data/local/tmp/a.txt');
+    expect(call.arguments['followSymbolicLinks'], false);
+  });
+
+  test('file queries forward the path and default to false', () async {
+    final exists = await platform.fileExists('/data/local/tmp');
+    expect(exists, isFalse);
+    final call = log.singleWhere((c) => c.method == 'fileExists');
+    expect(call.arguments['path'], '/data/local/tmp');
+  });
+
+  test('file read goes through handle -> bytes -> close', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          switch (methodCall.method) {
+            case 'fileOpenRead':
+              return 7;
+            case 'fileRead':
+              return Uint8List.fromList('hi'.codeUnits);
+            default:
+              return null;
+          }
+        });
+
+    final handle = await platform.fileOpenRead('/data/local/tmp/a.txt');
+    expect(handle, 7);
+
+    final bytes = await platform.fileRead(handle, maxBytes: 16);
+    expect(bytes, Uint8List.fromList('hi'.codeUnits));
+
+    await platform.fileClose(handle);
+
+    final read = log.singleWhere((c) => c.method == 'fileRead');
+    expect(read.arguments['handle'], 7);
+    expect(read.arguments['maxBytes'], 16);
+    expect(
+      log.singleWhere((c) => c.method == 'fileClose').arguments['handle'],
+      7,
+    );
+  });
+
+  test('fileWalkStart forwards the walk options', () async {
+    await platform.fileWalkStart(
+      'walk_1',
+      '/data/local/tmp',
+      maxDepth: 2,
+      skipDirectoryGlobs: const ['cache'],
+      flushBatchSize: 8,
+    );
+
+    final call = log.singleWhere((c) => c.method == 'fileWalkStart');
+    expect(call.arguments['operationId'], 'walk_1');
+    expect(call.arguments['path'], '/data/local/tmp');
+    expect(call.arguments['maxDepth'], 2);
+    expect(call.arguments['skipDirectoryGlobs'], <String>['cache']);
+    expect(call.arguments['flushBatchSize'], 8);
+  });
+
+  test('fileWalkEntries decodes entries, including missing metadata', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockStreamHandler(
+          const EventChannel('priv_kit/file_walk/walk_2'),
+          MockStreamHandler.inline(
+            onListen: (Object? arguments, MockStreamHandlerEventSink events) {
+              events.success(<String, Object?>{
+                'absolutePath': '/data/local/tmp/a.txt',
+                'depth': 1,
+                'metadata': <String, Object?>{
+                  'absolutePath': '/data/local/tmp/a.txt',
+                  'sizeBytes': 3,
+                  'lastModifiedMillis': 0,
+                  'unixMode': 33188,
+                  'uid': 0,
+                  'gid': 0,
+                  'type': 'REGULAR_FILE',
+                },
+              });
+              // Metadata is absent when the server cannot read the attributes.
+              events.success(<String, Object?>{
+                'absolutePath': '/data/local/tmp/locked',
+                'depth': 2,
+                'metadata': null,
+              });
+              events.endOfStream();
+            },
+          ),
+        );
+
+    final entries = await platform.fileWalkEntries('walk_2').toList();
+    expect(entries, hasLength(2));
+    expect(entries.first.name, 'a.txt');
+    expect(entries.first.metadata?.sizeBytes, 3);
+    expect(entries.last.metadata, isNull);
+    expect(entries.last.depth, 2);
+  });
+
   test('getRuntimeConfig decodes the reconnect policy', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {

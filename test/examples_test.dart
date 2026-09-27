@@ -88,6 +88,114 @@ class _FakePlatform extends PrivKitPlatform {
   Future<String> getNativeStarterCommand() => Future.value('starter');
 
   @override
+  Future<PrivFileMetadata> fileMetadata(
+    String path, {
+    bool followSymbolicLinks = false,
+  }) => Future.value(
+    const PrivFileMetadata(
+      absolutePath: '/data/local/tmp/a.txt',
+      sizeBytes: 3,
+      lastModifiedMillis: 0,
+      unixMode: 33188,
+      uid: 0,
+      gid: 0,
+      type: PrivFileType.regularFile,
+    ),
+  );
+
+  @override
+  Future<bool> fileExists(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileIsFile(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileIsDirectory(String path) => Future.value(false);
+
+  @override
+  Future<bool> fileIsSymbolicLink(String path) => Future.value(false);
+
+  @override
+  Future<bool> fileCanRead(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileCanWrite(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileCanExecute(String path) => Future.value(false);
+
+  @override
+  Future<int> fileLength(String path) => Future.value(3);
+
+  @override
+  Future<int> fileLastModified(String path) => Future.value(0);
+
+  @override
+  Future<bool> fileCreateNewFile(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileMkdir(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileMkdirs(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileDelete(String path) => Future.value(true);
+
+  @override
+  Future<bool> fileRenameTo(String from, String to) => Future.value(true);
+
+  @override
+  Future<void> fileReplaceAtomically(String from, String to) async {}
+
+  @override
+  Future<bool> fileDeleteRecursively(String path) => Future.value(true);
+
+  @override
+  Future<int> fileOpenRead(String path) => Future.value(1);
+
+  @override
+  Future<int> fileOpenWrite(
+    String path, {
+    bool append = false,
+    bool syncOnClose = false,
+  }) => Future.value(2);
+
+  var _readCount = 0;
+
+  @override
+  Future<Uint8List> fileRead(
+    int handle, {
+    int maxBytes = privilegeFileDefaultReadChunkBytes,
+  }) {
+    // First read yields content, the next reports EOF. Without that EOF step
+    // fileReadAllBytes would loop forever.
+    _readCount++;
+    return Future.value(
+      _readCount == 1 ? Uint8List.fromList('hi'.codeUnits) : Uint8List(0),
+    );
+  }
+
+  @override
+  Future<void> fileWrite(int handle, Uint8List bytes) async {}
+
+  @override
+  Future<void> fileClose(int handle) async {}
+
+  @override
+  Future<void> fileWalkStart(
+    String operationId,
+    String path, {
+    int? maxDepth,
+    List<String>? skipDirectoryGlobs,
+    int? flushBatchSize,
+  }) async {}
+
+  @override
+  Stream<PrivFileEntry> fileWalkEntries(String operationId) =>
+      const Stream.empty();
+
+  @override
   Future<PrivRuntimeConfig> getRuntimeConfig() => Future.value(
     const PrivRuntimeConfig(
       followDeathDelayMillis: privilegeDefaultFollowDeathDelayMillis,
@@ -379,6 +487,31 @@ void main() {
     await privKit.pingServer();
     await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
     await privKit.shutdownServer();
+
+    // File proxy: metadata, streams and walking.
+    const path = '/data/local/tmp/priv_kit_demo';
+    final metadata = await privKit.fileMetadata(path);
+    expect(metadata.type, PrivFileType.regularFile);
+    await privKit.fileExists(path);
+    await privKit.fileIsDirectory(path);
+    await privKit.fileLength(path);
+
+    await privKit.fileWriteAllBytes(
+      path,
+      Uint8List.fromList('hello'.codeUnits),
+      syncOnClose: true,
+    );
+    final bytes = await privKit.fileReadAllBytes(path);
+    expect(bytes.isNotEmpty, isTrue);
+
+    // Streaming a directory; maxDepth 1 is a non-recursive listing.
+    await for (final entry in privKit.fileWalk(
+      '/data/local/tmp',
+      maxDepth: 1,
+    )) {
+      // ignore: avoid_print
+      print('${entry.depth} ${entry.name}');
+    }
 
     // Runtime configuration.
     final config = await privKit.getRuntimeConfig();

@@ -9,6 +9,7 @@ export 'src/models/adb.dart';
 export 'src/models/command.dart';
 export 'src/models/config.dart';
 export 'src/models/external_startup.dart';
+export 'src/models/file.dart';
 export 'src/models/permission.dart';
 export 'src/models/server_info.dart';
 export 'src/models/startup_log.dart';

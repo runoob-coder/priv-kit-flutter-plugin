@@ -355,6 +355,81 @@ owner 进程死亡、服务端关闭也会终止未完成的命令。**最多同
 不提供 stdin 或 PTY：不支持交互式 shell、终端尺寸、终端信号、ANSI 渲染或
 daemon 管理。部分程序在 stdout 连接 pipe 而非终端时会自行缓存，数据可能成批到达。
 
+## 📁 文件代理
+
+文档：[文件代理](https://priv-kit.pages.dev/zh/guide/file-proxy)。
+
+所有操作都在已连接的服务端内执行，因此 Dart 可以访问 App 自身无权读写的路径。
+路径是普通字符串且必须是绝对路径，没有本地路径处理能力。
+
+### 🔍 查询
+
+```dart
+final exists = await privKit.fileExists('/data/local/tmp/a.txt');
+final size = await privKit.fileLength(path);
+final isDir = await privKit.fileIsDirectory(path);
+
+final meta = await privKit.fileMetadata('/data/local/tmp');
+print(meta.type); // PrivFileType.directory
+print(meta.lastModified);
+```
+
+另有：`fileIsFile`、`fileIsSymbolicLink`、`fileCanRead`、`fileCanWrite`、
+`fileCanExecute`、`fileLastModified`。
+
+### ✏️ 修改
+
+```dart
+await privKit.fileMkdirs('/data/local/tmp/demo/nested');
+await privKit.fileCreateNewFile('/data/local/tmp/demo/a.txt');
+await privKit.fileRenameTo(from, to);
+await privKit.fileDelete(path);
+
+// 目录连同内容一起删除
+await privKit.fileDeleteRecursively('/data/local/tmp/demo');
+```
+
+`fileDeleteRecursively` 不跟随符号链接，目标不存在也算删除成功。返回 `false`
+表示至少有一个条目未能删除，其余可能已经删除。
+
+`fileReplaceAtomically(from, to)` 对应 Linux `rename(2)`：两个路径必须在同一
+挂载的文件系统上，且不会退化成复制后删除。
+
+### 📖 读写
+
+整文件读写用 `*AllBytes` 便捷方法，内部会打开、传输并关闭：
+
+```dart
+await privKit.fileWriteAllBytes(path, bytes, syncOnClose: true);
+final data = await privKit.fileReadAllBytes(path);
+```
+
+大文件建议自己驱动流。务必关闭句柄——关闭写句柄会一直阻塞，直到服务端消费完
+所有字节：
+
+```dart
+final handle = await privKit.fileOpenWrite(path, append: true);
+try {
+  await privKit.fileWrite(handle, chunk);
+} finally {
+  await privKit.fileClose(handle);
+}
+```
+
+### 🌳 遍历目录
+
+```dart
+await for (final entry in privKit.fileWalk('/data/local/tmp', maxDepth: 1)) {
+  print('${entry.depth} ${entry.name} ${entry.metadata?.sizeBytes}');
+}
+```
+
+`maxDepth: 1` 是非递归的一层列表；省略则遍历整棵子树。`skipDirectoryGlobs`
+用于剪掉匹配的目录名。取消订阅即停止遍历。
+
+`entry.metadata` 为 null 表示服务端能枚举该名字但读不到它的属性——这类条目
+会被发出但不会进入。
+
 ## 🔄 服务端生命周期
 
 ```dart
@@ -472,6 +547,7 @@ await privKit.closeSession(sessionId);
 | `SERVER_UNAVAILABLE` | 服务端 Binder 不存在或已死亡               |
 | `COMMAND_ERROR`      | 命令无法启动或执行失败                      |
 | `COMMAND_TIMEOUT`    | 命令超过执行时限                         |
+| `FILE_ERROR`         | 文件操作失败（`IOException`/`ErrnoException`） |
 | `INVALID_ARGUMENT`   | 参数校验失败                           |
 | `ILLEGAL_STATE`      | 当前状态下不允许该调用                      |
 | `SECURITY_ERROR`     | 缺少 Android 权限                    |

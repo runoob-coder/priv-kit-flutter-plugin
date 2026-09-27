@@ -12,6 +12,8 @@ import priv.kit.core.adb.PrivilegeAdbWirelessDebuggingControlStatus
 import priv.kit.core.binder.PrivilegeServerUnavailableException
 import priv.kit.core.command.PrivilegeCommandException
 import priv.kit.core.command.PrivilegeCommandTimeoutException
+import android.system.ErrnoException
+import java.io.IOException
 
 /** Thrown when the device does not satisfy the minimum API level of a call. */
 internal class PrivKitUnsupportedApiException(
@@ -34,6 +36,7 @@ internal object PrivKitErrorCodes {
     const val SERVER_UNAVAILABLE = "SERVER_UNAVAILABLE"
     const val COMMAND = "COMMAND_ERROR"
     const val COMMAND_TIMEOUT = "COMMAND_TIMEOUT"
+    const val FILE = "FILE_ERROR"
     const val INVALID_ARGUMENT = "INVALID_ARGUMENT"
     const val ILLEGAL_STATE = "ILLEGAL_STATE"
     const val SECURITY = "SECURITY_ERROR"
@@ -49,6 +52,11 @@ internal fun Throwable.toPrivKitError(): PrivKitError {
         is PrivilegeServerUnavailableException -> PrivKitErrorCodes.SERVER_UNAVAILABLE
         is PrivilegeCommandTimeoutException -> PrivKitErrorCodes.COMMAND_TIMEOUT
         is PrivilegeCommandException -> PrivKitErrorCodes.COMMAND
+        // Covers ErrnoException too, which reports Linux errors from a failed
+        // filesystem operation such as EXDEV or EACCES.
+        is IOException -> PrivKitErrorCodes.FILE
+        // metadata() reports Linux errors this way, e.g. EACCES or ENOENT.
+        is ErrnoException -> PrivKitErrorCodes.FILE
         is PrivKitUnsupportedApiException -> PrivKitErrorCodes.UNSUPPORTED_API
         is PrivKitNotFoundException -> PrivKitErrorCodes.NOT_FOUND
         is kotlinx.coroutines.CancellationException -> PrivKitErrorCodes.CANCELLED

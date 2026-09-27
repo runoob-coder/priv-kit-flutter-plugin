@@ -8,6 +8,7 @@ import 'models/adb.dart';
 import 'models/command.dart';
 import 'models/config.dart';
 import 'models/external_startup.dart';
+import 'models/file.dart';
 import 'models/permission.dart';
 import 'models/server_info.dart';
 import 'models/startup_log.dart';
@@ -24,6 +25,7 @@ class PrivKit {
 
   int _operationCounter = 0;
   int _commandCounter = 0;
+  int _walkCounter = 0;
 
   /// Process-wide connection state of the Privileged Server.
   ///
@@ -193,6 +195,190 @@ class PrivKit {
       userId: userId,
     ),
   );
+
+  /// Reads one metadata snapshot of [path].
+  ///
+  /// Symbolic links are not followed by default.
+  Future<PrivFileMetadata> fileMetadata(
+    String path, {
+    bool followSymbolicLinks = false,
+  }) => _guard(
+    () =>
+        _platform.fileMetadata(path, followSymbolicLinks: followSymbolicLinks),
+  );
+
+  /// Whether [path] exists.
+  Future<bool> fileExists(String path) =>
+      _guard(() => _platform.fileExists(path));
+
+  /// Whether [path] is a regular file.
+  Future<bool> fileIsFile(String path) =>
+      _guard(() => _platform.fileIsFile(path));
+
+  /// Whether [path] is a directory.
+  Future<bool> fileIsDirectory(String path) =>
+      _guard(() => _platform.fileIsDirectory(path));
+
+  /// Whether [path] is a symbolic link.
+  Future<bool> fileIsSymbolicLink(String path) =>
+      _guard(() => _platform.fileIsSymbolicLink(path));
+
+  /// Whether [path] can be read.
+  Future<bool> fileCanRead(String path) =>
+      _guard(() => _platform.fileCanRead(path));
+
+  /// Whether [path] can be written.
+  Future<bool> fileCanWrite(String path) =>
+      _guard(() => _platform.fileCanWrite(path));
+
+  /// Whether [path] can be executed.
+  Future<bool> fileCanExecute(String path) =>
+      _guard(() => _platform.fileCanExecute(path));
+
+  /// Size of [path] in bytes.
+  Future<int> fileLength(String path) =>
+      _guard(() => _platform.fileLength(path));
+
+  /// Last modification time of [path], in milliseconds since the epoch.
+  Future<int> fileLastModified(String path) =>
+      _guard(() => _platform.fileLastModified(path));
+
+  /// Creates [path] as a new empty file.
+  Future<bool> fileCreateNewFile(String path) =>
+      _guard(() => _platform.fileCreateNewFile(path));
+
+  /// Creates [path] as a directory, requiring its parent to exist.
+  Future<bool> fileMkdir(String path) =>
+      _guard(() => _platform.fileMkdir(path));
+
+  /// Creates [path] as a directory, creating missing parents.
+  Future<bool> fileMkdirs(String path) =>
+      _guard(() => _platform.fileMkdirs(path));
+
+  /// Deletes [path]. A directory must be empty; use
+  /// [fileDeleteRecursively] for a non-empty one.
+  Future<bool> fileDelete(String path) =>
+      _guard(() => _platform.fileDelete(path));
+
+  /// Renames [from] to [to].
+  Future<bool> fileRenameTo(String from, String to) =>
+      _guard(() => _platform.fileRenameTo(from, to));
+
+  /// Atomically renames [from] over [to] using Linux `rename(2)`.
+  ///
+  /// Both paths must be on the same mounted filesystem; there is no copy or
+  /// delete fallback. Fails with [PrivKitErrorCode.file] when they are not.
+  Future<void> fileReplaceAtomically(String from, String to) =>
+      _guard(() => _platform.fileReplaceAtomically(from, to));
+
+  /// Deletes [path] and, when it is a directory, all of its descendants.
+  ///
+  /// The traversal does not follow symbolic links. A missing target counts as
+  /// deleted. A `false` result means at least one entry could not be deleted;
+  /// others may already have been removed.
+  Future<bool> fileDeleteRecursively(String path) =>
+      _guard(() => _platform.fileDeleteRecursively(path));
+
+  /// Opens [path] for reading and returns a stream handle.
+  ///
+  /// Pass the handle to [fileRead] and release it with [fileClose].
+  Future<int> fileOpenRead(String path) =>
+      _guard(() => _platform.fileOpenRead(path));
+
+  /// Reads the whole of [path] as bytes.
+  ///
+  /// Convenience wrapper that opens, drains and closes the stream.
+  Future<Uint8List> fileReadAllBytes(String path) async {
+    final handle = await fileOpenRead(path);
+    try {
+      final chunks = <int>[];
+      while (true) {
+        final chunk = await fileRead(handle);
+        if (chunk.isEmpty) break;
+        chunks.addAll(chunk);
+      }
+      return Uint8List.fromList(chunks);
+    } finally {
+      await fileClose(handle);
+    }
+  }
+
+  /// Opens [path] for writing and returns a stream handle.
+  ///
+  /// When [syncOnClose] is true the server calls `fsync(2)` before reporting
+  /// completion. Closing waits for the server to consume every byte.
+  Future<int> fileOpenWrite(
+    String path, {
+    bool append = false,
+    bool syncOnClose = false,
+  }) => _guard(
+    () =>
+        _platform.fileOpenWrite(path, append: append, syncOnClose: syncOnClose),
+  );
+
+  /// Writes [bytes] and closes the stream, waiting for the server to finish.
+  ///
+  /// Convenience wrapper that opens, writes and closes.
+  Future<void> fileWriteAllBytes(
+    String path,
+    Uint8List bytes, {
+    bool append = false,
+    bool syncOnClose = false,
+  }) async {
+    final handle = await fileOpenWrite(
+      path,
+      append: append,
+      syncOnClose: syncOnClose,
+    );
+    try {
+      await fileWrite(handle, bytes);
+    } finally {
+      await fileClose(handle);
+    }
+  }
+
+  /// Reads up to [maxBytes] from [handle]. An empty list means end of file.
+  Future<Uint8List> fileRead(
+    int handle, {
+    int maxBytes = privilegeFileDefaultReadChunkBytes,
+  }) => _guard(() => _platform.fileRead(handle, maxBytes: maxBytes));
+
+  /// Writes [bytes] to [handle].
+  Future<void> fileWrite(int handle, Uint8List bytes) =>
+      _guard(() => _platform.fileWrite(handle, bytes));
+
+  /// Closes a stream handle opened by [fileOpenRead] or [fileOpenWrite].
+  Future<void> fileClose(int handle) =>
+      _guard(() => _platform.fileClose(handle));
+
+  /// Streams the descendants of the directory at [path].
+  ///
+  /// The directory itself is not emitted; direct children have depth 1, so
+  /// `maxDepth: 1` is a non-recursive listing. Cancelling the subscription
+  /// stops the walk. The traversal does not follow symbolic links.
+  Stream<PrivFileEntry> fileWalk(
+    String path, {
+    int? maxDepth,
+    List<String>? skipDirectoryGlobs,
+    int? flushBatchSize,
+  }) {
+    final id = nextWalkOperationId();
+    return Stream<void>.fromFuture(
+      _guard(
+        () => _platform.fileWalkStart(
+          id,
+          path,
+          maxDepth: maxDepth,
+          skipDirectoryGlobs: skipDirectoryGlobs,
+          flushBatchSize: flushBatchSize,
+        ),
+      ),
+    ).asyncExpand((_) => _platform.fileWalkEntries(id));
+  }
+
+  /// Generates a walk operation id, so several walks can run at once.
+  String nextWalkOperationId() =>
+      'walk_${DateTime.now().microsecondsSinceEpoch}_${++_walkCounter}';
 
   /// The current owner-death reconnect policy.
   Future<PrivRuntimeConfig> getRuntimeConfig() =>

@@ -212,6 +212,75 @@ class _MyAppState extends State<MyApp> {
   static String _decode(Uint8List bytes) =>
       utf8.decode(bytes, allowMalformed: true).trimRight();
 
+  // --- File proxy samples -------------------------------------------------
+
+  Future<void> _fileInspect(String path) => _run(() async {
+    if (!await _privKit.fileExists(path)) {
+      _log('$path 不存在');
+      return;
+    }
+    final metadata = await _privKit.fileMetadata(path);
+    _log(
+      'metadata: ${metadata.name} type=${metadata.type.name} '
+      'size=${metadata.sizeBytes} uid=${metadata.uid} gid=${metadata.gid} '
+      'mode=${metadata.unixMode.toRadixString(8)}',
+    );
+    _log(
+      'isDirectory=${await _privKit.fileIsDirectory(path)} '
+      'canRead=${await _privKit.fileCanRead(path)} '
+      'canWrite=${await _privKit.fileCanWrite(path)}',
+    );
+  });
+
+  /// Writes through a handle. Closing waits for the server to consume every
+  /// byte, so a failed write still has to close the stream.
+  Future<void> _fileWriteSample(String path) => _run(() async {
+    await _privKit.fileWriteAllBytes(
+      path,
+      Uint8List.fromList(
+        'written by priv_kit at ${DateTime.now()}\n'.codeUnits,
+      ),
+      syncOnClose: true,
+    );
+    _log('已写入 $path (${await _privKit.fileLength(path)} bytes)');
+  });
+
+  /// Reads the whole file. [PrivKit.fileReadAllBytes] opens, drains and closes.
+  Future<void> _fileReadSample(String path) => _run(() async {
+    final bytes = await _privKit.fileReadAllBytes(path);
+    _log('读取 $path -> ${bytes.length} bytes\n${_decode(bytes)}');
+  });
+
+  /// Lists one level. `maxDepth: 1` is a non-recursive listing; drop it to
+  /// walk the whole subtree, or pass `skipDirectoryGlobs` to prune branches.
+  Future<void> _fileListSample(String path) => _run(() async {
+    final entries = <PrivFileEntry>[];
+    await for (final entry in _privKit.fileWalk(path, maxDepth: 1)) {
+      entries.add(entry);
+    }
+    if (entries.isEmpty) {
+      _log('$path 下没有条目');
+      return;
+    }
+    _log('$path 下 ${entries.length} 个条目：');
+    for (final entry in entries.take(20)) {
+      final size = entry.metadata?.sizeBytes;
+      _log(
+        '  ${'  ' * (entry.depth - 1)}${entry.name}'
+        '${size == null ? ' (metadata 不可读)' : ' $size bytes'}',
+      );
+    }
+  });
+
+  Future<void> _fileDeleteSample(String path) => _run(() async {
+    if (await _privKit.fileIsDirectory(path)) {
+      final deleted = await _privKit.fileDeleteRecursively(path);
+      _log('递归删除 $path -> $deleted');
+    } else {
+      _log('删除 $path -> ${await _privKit.fileDelete(path)}');
+    }
+  });
+
   @override
   Widget build(BuildContext context) {
     final server = _server;
@@ -287,6 +356,15 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(height: 12),
               SelectableText('adb shell ${_nativeStarterCommand!}'),
             ],
+            const SizedBox(height: 12),
+            _FilePanel(
+              enabled: server != null && !_busy,
+              onInspect: _fileInspect,
+              onWrite: _fileWriteSample,
+              onRead: _fileReadSample,
+              onList: _fileListSample,
+              onDelete: _fileDeleteSample,
+            ),
             const SizedBox(height: 16),
             Text('日志', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
@@ -610,6 +688,119 @@ class _CommandPanelState extends State<_CommandPanel> {
             const SizedBox(height: 8),
             Text(
               '不提供 stdin 或 PTY：不支持交互式程序、终端信号与 ANSI 渲染。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Exercises the file proxy: query, write, read, list and delete.
+class _FilePanel extends StatefulWidget {
+  const _FilePanel({
+    required this.enabled,
+    required this.onInspect,
+    required this.onWrite,
+    required this.onRead,
+    required this.onList,
+    required this.onDelete,
+  });
+
+  final bool enabled;
+  final Future<void> Function(String path) onInspect;
+  final Future<void> Function(String path) onWrite;
+  final Future<void> Function(String path) onRead;
+  final Future<void> Function(String path) onList;
+  final Future<void> Function(String path) onDelete;
+
+  @override
+  State<_FilePanel> createState() => _FilePanelState();
+}
+
+class _FilePanelState extends State<_FilePanel> {
+  final _path = TextEditingController(text: '/data/local/tmp/priv_kit_demo');
+  String? _error;
+
+  @override
+  void dispose() {
+    _path.dispose();
+    super.dispose();
+  }
+
+  void _submit(Future<void> Function(String path) action) {
+    final path = _path.text.trim();
+    if (!path.startsWith('/')) {
+      setState(() => _error = '路径必须是绝对路径');
+      return;
+    }
+    setState(() => _error = null);
+    FocusManager.instance.primaryFocus?.unfocus();
+    action(path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.enabled;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('文件代理', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _path,
+              enabled: enabled,
+              decoration: const InputDecoration(
+                labelText: '绝对路径',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: enabled ? () => _submit(widget.onInspect) : null,
+                  child: const Text('查询信息'),
+                ),
+                FilledButton.tonal(
+                  onPressed: enabled ? () => _submit(widget.onWrite) : null,
+                  child: const Text('写入'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? () => _submit(widget.onRead) : null,
+                  child: const Text('读取'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? () => _submit(widget.onList) : null,
+                  child: const Text('列出一层'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? () => _submit(widget.onDelete) : null,
+                  child: const Text('删除'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '文件操作在服务端进程内执行，因此可以读写 App 自身无权访问的路径。'
+              '删除目录会自动递归。',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

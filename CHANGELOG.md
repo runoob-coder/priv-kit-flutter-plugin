@@ -1,3 +1,26 @@
+## 0.0.5
+
+### File proxy
+
+Exposes `priv.kit.core.file`, so Dart can read, write and traverse paths the
+app itself cannot reach. Every operation runs inside the connected server.
+
+- Query: `fileExists`, `fileIsFile`, `fileIsDirectory`, `fileIsSymbolicLink`,
+  `fileCanRead`, `fileCanWrite`, `fileCanExecute`, `fileLength`,
+  `fileLastModified`, `fileMetadata`.
+- Mutate: `fileCreateNewFile`, `fileMkdir`, `fileMkdirs`, `fileDelete`,
+  `fileRenameTo`, `fileReplaceAtomically`, `fileDeleteRecursively`.
+- Streams: `fileOpenRead` / `fileRead` / `fileOpenWrite` / `fileWrite` /
+  `fileClose`, plus the `fileReadAllBytes` and `fileWriteAllBytes` helpers.
+- Traversal: `fileWalk`, which streams `PrivFileEntry` values.
+
+Streams cannot cross a platform channel, so they are exposed through integer
+handles; walks get a per-walk `EventChannel`, the same approach already used
+for command output. Cancelling a walk subscription stops the traversal.
+
+New error code `FILE_ERROR` covers `IOException` and `ErrnoException`, e.g. a
+cross-filesystem `rename(2)` or a permission failure.
+
 ## 0.0.4
 
 ### Runtime configuration

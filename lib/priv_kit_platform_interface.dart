@@ -7,8 +7,11 @@ import 'src/models/adb.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
+import 'src/models/file.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
+
+import 'dart:typed_data';
 
 /// The interface that implementations of `priv_kit` must implement.
 ///
@@ -173,6 +176,148 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// Cancels a start operation previously launched with [operationId].
   Future<void> cancelOperation(String operationId) {
     throw UnimplementedError('cancelOperation() has not been implemented.');
+  }
+
+  /// Reads one metadata snapshot of [path].
+  Future<PrivFileMetadata> fileMetadata(
+    String path, {
+    bool followSymbolicLinks = false,
+  }) {
+    throw UnimplementedError('fileMetadata() has not been implemented.');
+  }
+
+  /// Whether [path] exists.
+  Future<bool> fileExists(String path) {
+    throw UnimplementedError('fileExists() has not been implemented.');
+  }
+
+  /// Whether [path] is a regular file.
+  Future<bool> fileIsFile(String path) {
+    throw UnimplementedError('fileIsFile() has not been implemented.');
+  }
+
+  /// Whether [path] is a directory.
+  Future<bool> fileIsDirectory(String path) {
+    throw UnimplementedError('fileIsDirectory() has not been implemented.');
+  }
+
+  /// Whether [path] is a symbolic link.
+  Future<bool> fileIsSymbolicLink(String path) {
+    throw UnimplementedError('fileIsSymbolicLink() has not been implemented.');
+  }
+
+  /// Whether [path] can be read.
+  Future<bool> fileCanRead(String path) {
+    throw UnimplementedError('fileCanRead() has not been implemented.');
+  }
+
+  /// Whether [path] can be written.
+  Future<bool> fileCanWrite(String path) {
+    throw UnimplementedError('fileCanWrite() has not been implemented.');
+  }
+
+  /// Whether [path] can be executed.
+  Future<bool> fileCanExecute(String path) {
+    throw UnimplementedError('fileCanExecute() has not been implemented.');
+  }
+
+  /// Size of [path] in bytes.
+  Future<int> fileLength(String path) {
+    throw UnimplementedError('fileLength() has not been implemented.');
+  }
+
+  /// Last modification time of [path], in milliseconds since the epoch.
+  Future<int> fileLastModified(String path) {
+    throw UnimplementedError('fileLastModified() has not been implemented.');
+  }
+
+  /// Creates [path] as a new empty file.
+  Future<bool> fileCreateNewFile(String path) {
+    throw UnimplementedError('fileCreateNewFile() has not been implemented.');
+  }
+
+  /// Creates [path] as a directory, requiring its parent to exist.
+  Future<bool> fileMkdir(String path) {
+    throw UnimplementedError('fileMkdir() has not been implemented.');
+  }
+
+  /// Creates [path] as a directory, creating missing parents.
+  Future<bool> fileMkdirs(String path) {
+    throw UnimplementedError('fileMkdirs() has not been implemented.');
+  }
+
+  /// Deletes [path]. A directory must be empty.
+  Future<bool> fileDelete(String path) {
+    throw UnimplementedError('fileDelete() has not been implemented.');
+  }
+
+  /// Renames [from] to [to].
+  Future<bool> fileRenameTo(String from, String to) {
+    throw UnimplementedError('fileRenameTo() has not been implemented.');
+  }
+
+  /// Atomically renames [from] over [to].
+  ///
+  /// Both paths must be on the same mounted filesystem.
+  Future<void> fileReplaceAtomically(String from, String to) {
+    throw UnimplementedError(
+      'fileReplaceAtomically() has not been implemented.',
+    );
+  }
+
+  /// Deletes [path] and, when it is a directory, all of its descendants.
+  Future<bool> fileDeleteRecursively(String path) {
+    throw UnimplementedError(
+      'fileDeleteRecursively() has not been implemented.',
+    );
+  }
+
+  /// Opens [path] for reading and returns the stream handle.
+  Future<int> fileOpenRead(String path) {
+    throw UnimplementedError('fileOpenRead() has not been implemented.');
+  }
+
+  /// Opens [path] for writing and returns the stream handle.
+  Future<int> fileOpenWrite(
+    String path, {
+    bool append = false,
+    bool syncOnClose = false,
+  }) {
+    throw UnimplementedError('fileOpenWrite() has not been implemented.');
+  }
+
+  /// Reads up to [maxBytes] from [handle]. An empty list means end of file.
+  Future<Uint8List> fileRead(
+    int handle, {
+    int maxBytes = privilegeFileDefaultReadChunkBytes,
+  }) {
+    throw UnimplementedError('fileRead() has not been implemented.');
+  }
+
+  /// Writes [bytes] to [handle].
+  Future<void> fileWrite(int handle, Uint8List bytes) {
+    throw UnimplementedError('fileWrite() has not been implemented.');
+  }
+
+  /// Closes a stream handle opened by [fileOpenRead] or [fileOpenWrite].
+  Future<void> fileClose(int handle) {
+    throw UnimplementedError('fileClose() has not been implemented.');
+  }
+
+  /// Starts a directory walk and keeps it under [operationId].
+  Future<void> fileWalkStart(
+    String operationId,
+    String path, {
+    int? maxDepth,
+    List<String>? skipDirectoryGlobs,
+    int? flushBatchSize,
+  }) {
+    throw UnimplementedError('fileWalkStart() has not been implemented.');
+  }
+
+  /// Entries of the walk previously started with [fileWalkStart].
+  Stream<PrivFileEntry> fileWalkEntries(String operationId) {
+    throw UnimplementedError('fileWalkEntries() has not been implemented.');
   }
 
   /// The current owner-death reconnect policy.

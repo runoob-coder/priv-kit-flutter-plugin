@@ -14,6 +14,10 @@ abstract final class PrivKitErrorCode {
   /// The command exceeded its execution timeout.
   static const String commandTimeout = 'COMMAND_TIMEOUT';
 
+  /// A filesystem operation failed, for example `IOException` or
+  /// `ErrnoException` (cross-device rename, permission denied, and so on).
+  static const String file = 'FILE_ERROR';
+
   /// An argument failed validation inside priv-core.
   static const String invalidArgument = 'INVALID_ARGUMENT';
 

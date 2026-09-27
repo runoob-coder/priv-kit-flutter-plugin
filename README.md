@@ -369,6 +369,84 @@ There is no stdin and no PTY. No interactive shells, terminal sizing, terminal
 signals, ANSI rendering, or daemon management. Some programs buffer when
 stdout is a pipe rather than a terminal, so data may arrive in bursts.
 
+## 📁 File proxy
+
+Docs: [file proxy](https://priv-kit.pages.dev/guide/file-proxy).
+
+Every operation runs inside the connected server, so Dart can reach paths the
+app itself is not allowed to read or write. Paths are plain strings and must be
+absolute; there is no local path handling.
+
+### Querying
+
+```dart
+final exists = await privKit.fileExists('/data/local/tmp/a.txt');
+final size = await privKit.fileLength(path);
+final isDir = await privKit.fileIsDirectory(path);
+
+final meta = await privKit.fileMetadata('/data/local/tmp');
+print(meta.type); // PrivFileType.directory
+print(meta.lastModified);
+```
+
+Also available: `fileIsFile`, `fileIsSymbolicLink`, `fileCanRead`,
+`fileCanWrite`, `fileCanExecute`, `fileLastModified`.
+
+### Mutating
+
+```dart
+await privKit.fileMkdirs('/data/local/tmp/demo/nested');
+await privKit.fileCreateNewFile('/data/local/tmp/demo/a.txt');
+await privKit.fileRenameTo(from, to);
+await privKit.fileDelete(path);
+
+// A directory is deleted together with its contents.
+await privKit.fileDeleteRecursively('/data/local/tmp/demo');
+```
+
+`fileDeleteRecursively` does not follow symbolic links, and a missing target
+counts as deleted. A `false` result means at least one entry could not be
+removed; others may already be gone.
+
+`fileReplaceAtomically(from, to)` maps to Linux `rename(2)`: both paths must be
+on the same mounted filesystem and there is no copy-and-delete fallback.
+
+### Reading and writing
+
+For whole files, the `*AllBytes` helpers open, transfer and close:
+
+```dart
+await privKit.fileWriteAllBytes(path, bytes, syncOnClose: true);
+final data = await privKit.fileReadAllBytes(path);
+```
+
+For large files, drive the stream yourself. Always close the handle — closing a
+write handle waits until the server has consumed every byte:
+
+```dart
+final handle = await privKit.fileOpenWrite(path, append: true);
+try {
+  await privKit.fileWrite(handle, chunk);
+} finally {
+  await privKit.fileClose(handle);
+}
+```
+
+### Walking a directory
+
+```dart
+await for (final entry in privKit.fileWalk('/data/local/tmp', maxDepth: 1)) {
+  print('${entry.depth} ${entry.name} ${entry.metadata?.sizeBytes}');
+}
+```
+
+`maxDepth: 1` is a non-recursive listing; omit it to walk the whole subtree.
+`skipDirectoryGlobs` prunes matching directory names. Cancelling the
+subscription stops the walk.
+
+`entry.metadata` is null when the server can enumerate a name but cannot read
+its attributes — such entries are emitted but never entered.
+
 ## 🔄 Server lifecycle
 
 ```dart
@@ -490,6 +568,7 @@ Every failure throws `PrivKitException`:
 | `SERVER_UNAVAILABLE` | the server Binder is missing or dead                     |
 | `COMMAND_ERROR`      | a command could not start or complete                    |
 | `COMMAND_TIMEOUT`    | a command exceeded its deadline                          |
+| `FILE_ERROR`         | a filesystem operation failed (`IOException`/`ErrnoException`) |
 | `INVALID_ARGUMENT`   | an argument failed validation                            |
 | `ILLEGAL_STATE`      | the call is not allowed in the current state             |
 | `SECURITY_ERROR`     | a required Android permission is missing                 |

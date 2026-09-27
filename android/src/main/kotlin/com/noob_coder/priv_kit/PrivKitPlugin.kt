@@ -40,6 +40,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val sessions = PrivKitSessions()
     private val adb = PrivKitAdb(sessions)
     private lateinit var commands: PrivKitCommands
+    private lateinit var files: PrivKitFiles
     private val operations = HashMap<String, Job>()
     private val operationLock = Any()
     private var serverStateJob: Job? = null
@@ -59,6 +60,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         startupLogChannel.setStreamHandler(StartupLogStreamHandler())
 
         commands = PrivKitCommands(messenger, scope, mainHandler)
+        files = PrivKitFiles(messenger, scope, mainHandler)
     }
 
     override fun onMethodCall(
@@ -264,10 +266,23 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             }
 
-            else -> if (adb.handles(call.method)) {
-                runAsync(result) { adb.invoke(call.method, call) }
-            } else {
-                result.notImplemented()
+            "fileWalkStart" -> {
+                // Registers the event channel, so it has to happen on the main
+                // thread before the reply lets Dart subscribe.
+                files.startWalk(call)
+                result.success(null)
+            }
+
+            else -> when {
+                adb.handles(call.method) -> runAsync(result) {
+                    adb.invoke(call.method, call)
+                }
+
+                files.handles(call.method) -> runAsync(result) {
+                    files.invoke(call.method, call)
+                }
+
+                else -> result.notImplemented()
             }
         }
     }
@@ -282,6 +297,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         synchronized(operationLock) { operations.clear() }
         sessions.closeAll()
         commands.closeAll()
+        files.closeAll()
         scope.cancel()
     }
 

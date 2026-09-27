@@ -8,6 +8,7 @@ import 'src/models/adb.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
+import 'src/models/file.dart';
 import 'src/models/permission.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
@@ -31,6 +32,9 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   /// Each running command gets its own channel, because a Flutter
   /// [EventChannel] name can only back one active broadcast at a time.
   static const String commandChannelPrefix = 'priv_kit/command/';
+
+  /// Prefix of the per-walk event channels, for the same reason.
+  static const String fileWalkChannelPrefix = 'priv_kit/file_walk/';
 
   Stream<PrivServerInfo?>? _serverStateStream;
   Stream<PrivStartupLogLine>? _startupLogStream;
@@ -180,6 +184,161 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       methodChannel.invokeMethod<void>('cancelOperation', <String, Object?>{
         'operationId': operationId,
       });
+
+  @override
+  Future<PrivFileMetadata> fileMetadata(
+    String path, {
+    bool followSymbolicLinks = false,
+  }) async => PrivFileMetadata.fromMap(
+    await _requireMap('fileMetadata', <String, Object?>{
+      'path': path,
+      'followSymbolicLinks': followSymbolicLinks,
+    }),
+  );
+
+  @override
+  Future<bool> fileExists(String path) => _fileBool('fileExists', path);
+
+  @override
+  Future<bool> fileIsFile(String path) => _fileBool('fileIsFile', path);
+
+  @override
+  Future<bool> fileIsDirectory(String path) =>
+      _fileBool('fileIsDirectory', path);
+
+  @override
+  Future<bool> fileIsSymbolicLink(String path) =>
+      _fileBool('fileIsSymbolicLink', path);
+
+  @override
+  Future<bool> fileCanRead(String path) => _fileBool('fileCanRead', path);
+
+  @override
+  Future<bool> fileCanWrite(String path) => _fileBool('fileCanWrite', path);
+
+  @override
+  Future<bool> fileCanExecute(String path) => _fileBool('fileCanExecute', path);
+
+  @override
+  Future<int> fileLength(String path) => _fileInt('fileLength', path);
+
+  @override
+  Future<int> fileLastModified(String path) =>
+      _fileInt('fileLastModified', path);
+
+  @override
+  Future<bool> fileCreateNewFile(String path) =>
+      _fileBool('fileCreateNewFile', path);
+
+  @override
+  Future<bool> fileMkdir(String path) => _fileBool('fileMkdir', path);
+
+  @override
+  Future<bool> fileMkdirs(String path) => _fileBool('fileMkdirs', path);
+
+  @override
+  Future<bool> fileDelete(String path) => _fileBool('fileDelete', path);
+
+  @override
+  Future<bool> fileRenameTo(String from, String to) async =>
+      await methodChannel.invokeMethod<bool>('fileRenameTo', <String, Object?>{
+        'path': from,
+        'destination': to,
+      }) ??
+      false;
+
+  @override
+  Future<void> fileReplaceAtomically(String from, String to) =>
+      methodChannel.invokeMethod<void>(
+        'fileReplaceAtomically',
+        <String, Object?>{'path': from, 'destination': to},
+      );
+
+  @override
+  Future<bool> fileDeleteRecursively(String path) =>
+      _fileBool('fileDeleteRecursively', path);
+
+  @override
+  Future<int> fileOpenRead(String path) => _fileHandle('fileOpenRead', path);
+
+  @override
+  Future<int> fileOpenWrite(
+    String path, {
+    bool append = false,
+    bool syncOnClose = false,
+  }) async =>
+      await methodChannel.invokeMethod<int>('fileOpenWrite', <String, Object?>{
+        'path': path,
+        'append': append,
+        'syncOnClose': syncOnClose,
+      }) ??
+      -1;
+
+  @override
+  Future<Uint8List> fileRead(
+    int handle, {
+    int maxBytes = privilegeFileDefaultReadChunkBytes,
+  }) async =>
+      await methodChannel.invokeMethod<Uint8List>('fileRead', <String, Object?>{
+        'handle': handle,
+        'maxBytes': maxBytes,
+      }) ??
+      Uint8List(0);
+
+  @override
+  Future<void> fileWrite(int handle, Uint8List bytes) =>
+      methodChannel.invokeMethod<void>('fileWrite', <String, Object?>{
+        'handle': handle,
+        'bytes': bytes,
+      });
+
+  @override
+  Future<void> fileClose(int handle) => methodChannel.invokeMethod<void>(
+    'fileClose',
+    <String, Object?>{'handle': handle},
+  );
+
+  @override
+  Future<void> fileWalkStart(
+    String operationId,
+    String path, {
+    int? maxDepth,
+    List<String>? skipDirectoryGlobs,
+    int? flushBatchSize,
+  }) => methodChannel.invokeMethod<void>('fileWalkStart', <String, Object?>{
+    'operationId': operationId,
+    'path': path,
+    'maxDepth': maxDepth,
+    'skipDirectoryGlobs': skipDirectoryGlobs,
+    'flushBatchSize': flushBatchSize,
+  });
+
+  @override
+  Stream<PrivFileEntry> fileWalkEntries(String operationId) =>
+      EventChannel(
+        '$fileWalkChannelPrefix$operationId',
+      ).receiveBroadcastStream().map(
+        (dynamic event) =>
+            PrivFileEntry.fromMap(event as Map<dynamic, dynamic>),
+      );
+
+  Future<bool> _fileBool(String method, String path) async =>
+      await methodChannel.invokeMethod<bool>(method, <String, Object?>{
+        'path': path,
+      }) ??
+      false;
+
+  Future<int> _fileInt(String method, String path) async =>
+      await methodChannel.invokeMethod<int>(method, <String, Object?>{
+        'path': path,
+      }) ??
+      0;
+
+  Future<int> _fileHandle(String method, String path) async =>
+      await methodChannel.invokeMethod<int>(method, <String, Object?>{
+        'path': path,
+      }) ??
+      -1;
 
   @override
   Future<PrivRuntimeConfig> getRuntimeConfig() async =>
