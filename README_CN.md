@@ -369,6 +369,23 @@ await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
 // 随后立即结束进程
 ```
 
+## ⚙️ 运行时配置
+
+控制服务端在 owner 进程死亡时的行为：
+
+```dart
+final config = await privKit.getRuntimeConfig();
+print(config.followDeathDelay); // 默认 10 分钟
+
+await privKit.configureRuntime(
+  followDeathDelayMillis: 60000, // 只等 1 分钟
+  activeReconnectOnOwnerDeath: true,
+);
+```
+
+省略的字段保持当前值。变更会推送到已连接的服务端，并作用于**下一次** owner
+死亡——已经启动的重连流程会沿用它在 owner 死亡时捕获的值。
+
 ## 🔐 服务端权限
 
 ```dart

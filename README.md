@@ -383,6 +383,24 @@ await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
 // then terminate the process immediately
 ```
 
+## ⚙️ Runtime configuration
+
+Controls what the server does when the owner process dies:
+
+```dart
+final config = await privKit.getRuntimeConfig();
+print(config.followDeathDelay); // default: 10 minutes
+
+await privKit.configureRuntime(
+  followDeathDelayMillis: 60000, // wait 1 minute for the owner to come back
+  activeReconnectOnOwnerDeath: true,
+);
+```
+
+Omitted fields keep their current value. Changes are pushed to the connected
+server and apply to the **next** owner death — a reconnect flow that has
+already started keeps the values it captured when the owner died.
+
 ## 🔐 Server permissions
 
 ```dart

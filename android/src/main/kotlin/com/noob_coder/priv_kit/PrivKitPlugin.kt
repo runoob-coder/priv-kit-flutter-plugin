@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import priv.kit.core.Privilege
+import priv.kit.core.PrivilegeConfig
 import priv.kit.core.PrivilegeExternalStartup
 import priv.kit.core.adb.PrivilegeAdbConnectionOptions
 import priv.kit.core.PrivilegeExternalStartupBridgeOptions
@@ -188,6 +189,34 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "getNativeStarterCommand" -> runAsync(result) {
                 // First access inspects the installed APK and must run off the main thread.
                 withContext(Dispatchers.IO) { Privilege.nativeStarterCommand }
+            }
+
+            "getRuntimeConfig" -> runAsync(result) {
+                withContext(Dispatchers.IO) {
+                    mapOf<String, Any?>(
+                        "followDeathDelayMillis" to PrivilegeConfig.followDeathDelayMillis,
+                        "activeReconnectOnOwnerDeath" to
+                            PrivilegeConfig.activeReconnectOnOwnerDeath,
+                    )
+                }
+            }
+
+            "configureRuntime" -> runAsync(result) {
+                val followDeathDelayMillis =
+                    call.argument<Number>("followDeathDelayMillis")?.toLong()
+                val activeReconnectOnOwnerDeath =
+                    call.argument<Boolean>("activeReconnectOnOwnerDeath")
+                withContext(Dispatchers.IO) {
+                    // Omitted fields keep their current value, so read them back
+                    // before publishing the complete snapshot.
+                    PrivilegeConfig.configure(
+                        followDeathDelayMillis = followDeathDelayMillis
+                            ?: PrivilegeConfig.followDeathDelayMillis,
+                        activeReconnectOnOwnerDeath = activeReconnectOnOwnerDeath
+                            ?: PrivilegeConfig.activeReconnectOnOwnerDeath,
+                    )
+                }
+                null
             }
 
             "cancelOperation" -> {

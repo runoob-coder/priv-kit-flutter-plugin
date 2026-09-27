@@ -6,6 +6,7 @@ import '../priv_kit_platform_interface.dart';
 import 'exceptions.dart';
 import 'models/adb.dart';
 import 'models/command.dart';
+import 'models/config.dart';
 import 'models/external_startup.dart';
 import 'models/permission.dart';
 import 'models/server_info.dart';
@@ -190,6 +191,25 @@ class PrivKit {
       packageName: packageName,
       permission: permission,
       userId: userId,
+    ),
+  );
+
+  /// The current owner-death reconnect policy.
+  Future<PrivRuntimeConfig> getRuntimeConfig() =>
+      _guard(_platform.getRuntimeConfig);
+
+  /// Replaces the owner-death reconnect policy.
+  ///
+  /// Omitted fields keep their current value. The change is pushed to the
+  /// connected server and applies to the **next** owner death: a reconnect flow
+  /// that already started keeps the values it captured when the owner died.
+  Future<void> configureRuntime({
+    int? followDeathDelayMillis,
+    bool? activeReconnectOnOwnerDeath,
+  }) => _guard(
+    () => _platform.configureRuntime(
+      followDeathDelayMillis: followDeathDelayMillis,
+      activeReconnectOnOwnerDeath: activeReconnectOnOwnerDeath,
     ),
   );
 

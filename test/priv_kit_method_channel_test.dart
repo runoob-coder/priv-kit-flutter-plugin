@@ -102,6 +102,42 @@ void main() {
     expect(revoked.arguments['userId'], 10);
   });
 
+  test('getRuntimeConfig decodes the reconnect policy', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return <String, Object?>{
+            'followDeathDelayMillis': 60000,
+            'activeReconnectOnOwnerDeath': true,
+          };
+        });
+
+    final config = await platform.getRuntimeConfig();
+    expect(config.followDeathDelayMillis, 60000);
+    expect(config.followDeathDelay, const Duration(minutes: 1));
+    expect(config.activeReconnectOnOwnerDeath, isTrue);
+    expect(config.isDefault, isFalse);
+  });
+
+  test('configureRuntime forwards both fields', () async {
+    await platform.configureRuntime(
+      followDeathDelayMillis: 30000,
+      activeReconnectOnOwnerDeath: false,
+    );
+
+    final call = log.singleWhere((c) => c.method == 'configureRuntime');
+    expect(call.arguments['followDeathDelayMillis'], 30000);
+    expect(call.arguments['activeReconnectOnOwnerDeath'], false);
+  });
+
+  test('configureRuntime omits fields that were not given', () async {
+    await platform.configureRuntime(activeReconnectOnOwnerDeath: true);
+
+    final call = log.singleWhere((c) => c.method == 'configureRuntime');
+    expect(call.arguments['activeReconnectOnOwnerDeath'], true);
+    expect(call.arguments['followDeathDelayMillis'], isNull);
+  });
+
   test('getDeniedServerPermissions', () async {
     expect(await platform.getDeniedServerPermissions(), <String>[
       'android.permission.FAKE',

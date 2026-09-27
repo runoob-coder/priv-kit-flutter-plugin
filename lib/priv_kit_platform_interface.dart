@@ -5,6 +5,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'priv_kit_method_channel.dart';
 import 'src/models/adb.dart';
 import 'src/models/command.dart';
+import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
 import 'src/models/server_info.dart';
 import 'src/models/startup_log.dart';
@@ -172,6 +173,22 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// Cancels a start operation previously launched with [operationId].
   Future<void> cancelOperation(String operationId) {
     throw UnimplementedError('cancelOperation() has not been implemented.');
+  }
+
+  /// The current owner-death reconnect policy.
+  Future<PrivRuntimeConfig> getRuntimeConfig() {
+    throw UnimplementedError('getRuntimeConfig() has not been implemented.');
+  }
+
+  /// Replaces the owner-death reconnect policy.
+  ///
+  /// Omitted fields keep their current value. The change is pushed to the
+  /// connected server and applies to the next owner death.
+  Future<void> configureRuntime({
+    int? followDeathDelayMillis,
+    bool? activeReconnectOnOwnerDeath,
+  }) {
+    throw UnimplementedError('configureRuntime() has not been implemented.');
   }
 
   /// ADB identity of this app, including its public key fingerprint.

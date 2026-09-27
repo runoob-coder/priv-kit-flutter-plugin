@@ -88,6 +88,20 @@ class _FakePlatform extends PrivKitPlatform {
   Future<String> getNativeStarterCommand() => Future.value('starter');
 
   @override
+  Future<PrivRuntimeConfig> getRuntimeConfig() => Future.value(
+    const PrivRuntimeConfig(
+      followDeathDelayMillis: privilegeDefaultFollowDeathDelayMillis,
+      activeReconnectOnOwnerDeath: privilegeDefaultActiveReconnectOnOwnerDeath,
+    ),
+  );
+
+  @override
+  Future<void> configureRuntime({
+    int? followDeathDelayMillis,
+    bool? activeReconnectOnOwnerDeath,
+  }) async {}
+
+  @override
   Future<PrivAdbIdentityInfo> adbGetIdentityInfo({String? adbDeviceName}) =>
       Future.value(
         const PrivAdbIdentityInfo(deviceName: 'd', publicKeyFingerprint: 'f'),
@@ -365,6 +379,17 @@ void main() {
     await privKit.pingServer();
     await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
     await privKit.shutdownServer();
+
+    // Runtime configuration.
+    final config = await privKit.getRuntimeConfig();
+    expect(
+      config.followDeathDelayMillis,
+      privilegeDefaultFollowDeathDelayMillis,
+    );
+    await privKit.configureRuntime(
+      followDeathDelayMillis: 60000,
+      activeReconnectOnOwnerDeath: true,
+    );
 
     // Permissions.
     await privKit.getDeniedServerPermissions();

@@ -1,3 +1,21 @@
+## 0.0.4
+
+### Runtime configuration
+
+Exposes `priv.kit.core.PrivilegeConfig`, the owner-death reconnect policy:
+
+- `getRuntimeConfig()` — current `PrivRuntimeConfig`
+  (`followDeathDelayMillis`, `activeReconnectOnOwnerDeath`).
+- `configureRuntime(followDeathDelayMillis:, activeReconnectOnOwnerDeath:)`
+  — replaces it atomically. Omitted fields keep their current value.
+
+Upstream defaults are 10 minutes and `false`, also exported as
+`privilegeDefaultFollowDeathDelayMillis` /
+`privilegeDefaultActiveReconnectOnOwnerDeath`.
+
+Changes are pushed to the connected server and apply to the next owner death;
+a reconnect flow already in progress keeps the values it captured.
+
 ## 0.0.3
 
 ### Runtime permission management for any package

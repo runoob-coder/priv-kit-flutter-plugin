@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'priv_kit_platform_interface.dart';
 import 'src/models/adb.dart';
 import 'src/models/command.dart';
+import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
 import 'src/models/permission.dart';
 import 'src/models/server_info.dart';
@@ -179,6 +180,19 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       methodChannel.invokeMethod<void>('cancelOperation', <String, Object?>{
         'operationId': operationId,
       });
+
+  @override
+  Future<PrivRuntimeConfig> getRuntimeConfig() async =>
+      PrivRuntimeConfig.fromMap(await _requireMap('getRuntimeConfig'));
+
+  @override
+  Future<void> configureRuntime({
+    int? followDeathDelayMillis,
+    bool? activeReconnectOnOwnerDeath,
+  }) => methodChannel.invokeMethod<void>('configureRuntime', <String, Object?>{
+    'followDeathDelayMillis': followDeathDelayMillis,
+    'activeReconnectOnOwnerDeath': activeReconnectOnOwnerDeath,
+  });
 
   @override
   Future<PrivAdbIdentityInfo> adbGetIdentityInfo({
