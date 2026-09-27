@@ -33,14 +33,20 @@ This plugin covers the parts of [`priv-core`][priv-core] that make sense to driv
 - **Startup** — Root, ADB Wireless Debugging, ADB static TCP/IP, manual, and
   external startup (for example through Shizuku).
 - **Connection state** — a process-wide stream, plus startup diagnostics.
-- **Server lifecycle and permissions** — ping, shutdown, owner restart,
-  permission queries.
+- **Server lifecycle** — ping, shutdown, owner restart, runtime configuration.
+- **Permissions** — server permission queries, plus runtime permission
+  management for any package.
 - **ADB pairing and TCP control** — pairing, authorization checks, `adb tcpip`
   and friends.
 - **Command execution** — non-interactive processes with aggregated or
   streamed output.
+- **File proxy** — read, write and traverse paths your app itself cannot reach.
+- **UserService** — run your own Kotlin class with the server's privileges,
+  with the lifecycle driven from Dart.
 
-Not covered yet: file proxy, UserService, and direct Binder access.
+Direct Binder access is deliberately not exposed: a Binder cannot cross a
+platform channel. See [UserService](#-userservice) for the Kotlin-side bridge
+that replaces it.
 
 ## 📋 Requirements
 
@@ -60,9 +66,12 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin already depends on [`io.github.priv-kit:priv-core`][priv-core].
-Your app only needs the platform-side pieces that Priv Kit requires.
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.0) and
+exposes it as an `api` dependency, so priv-core types are on your compile
+classpath. Writing a UserService or registering an external startup bridge
+needs no extra declaration.
 
+Your app only needs the platform-side pieces that Priv Kit requires.
 See the [Android Example Project][Android Example].
 
 ### 1️⃣ Minimum SDK
@@ -651,12 +660,14 @@ multi-user devices; omitting it uses the current Android user.
 | `adbDiscoverPairingPort` / `adbDiscoverConnectPort`                                 | port discovery (API 30+)                    |
 | `adbPair` / `adbCheckPairing`                                                       | pairing                                     |
 | `adbOpenPairingCheckSession` / `adbCheckPairingSession`                             | polling without reconnecting                |
+| `adbOpenTcpAuthorizationCheckSession` / `adbCheckTcpAuthorizationSession`           | polling without reconnecting                |
 | `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | authorization                               |
 | `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp`                                   | control the static port                     |
 | `closeSession`                                                                      | release a session handle                    |
 
-Sessions are held behind integer handles — always `closeSession` when polling
-stops:
+Both pairing and TCP-authorization checks have a session variant, which reuses
+one ADB connection across polls. Sessions are held behind integer handles —
+always `closeSession` when polling stops:
 
 ```dart
 final sessionId = await privKit.adbOpenPairingCheckSession();
@@ -733,7 +744,8 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
   above, which matches the "custom UI with priv-core" approach in the docs.
 - `PrivilegeServerInfo.lifecycleBinder` is not sent across the channel. Dart
   receives `uid`, `pid`, `protocolVersion` and `selinuxContext` only.
-- File proxy, UserService and Binder access are not covered by this plugin.
+- A UserService's Binder stays in Kotlin: only the lifecycle calls and an
+  integer connection handle cross the channel.
 
 ## 🔗 Related Projects
 

@@ -32,11 +32,15 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 - **启动方式** — Root、ADB 无线调试、ADB 静态 TCP/IP 端口、手动启动、外部启动
   （例如通过 Shizuku）。
 - **连接状态** — 进程级状态流，以及启动过程的诊断日志。
-- **服务端生命周期与权限** — ping、关闭、owner 重启、权限查询。
+- **服务端生命周期** — ping、关闭、owner 重启、运行时配置。
+- **权限** — 服务端权限查询，以及任意包的运行时权限管理。
 - **ADB 配对与 TCP 控制** — 配对、授权检查、`adb tcpip` 等。
 - **命令执行** — 非交互进程，支持汇总输出与流式输出。
+- **文件代理** — 读写与遍历 App 自身无权访问的路径。
+- **UserService** — 让自写的 Kotlin 类以服务端权限运行，生命周期由 Dart 驱动。
 
-尚未接入：文件代理、UserService、Binder 直接访问。
+Binder 直接访问刻意不对外暴露：Binder 无法通过平台通道传递。替代做法见
+[UserService](#-userservice)——在 Kotlin 侧自行架桥。
 
 ## 📋 平台要求
 
@@ -56,9 +60,11 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件已经依赖 [`io.github.priv-kit:priv-core`][priv-core]，宿主 App 只需要完成
-Priv Kit 要求的平台侧配置。
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.0），并以 `api`
+方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
+或注册外部启动 bridge 都无需额外声明。
 
+宿主 App 只需要完成 Priv Kit 要求的平台侧配置。
 请参阅 [Flutter安卓示例项目][Android Example]。
 
 ### 1️⃣ 最低系统版本
@@ -625,10 +631,12 @@ await privKit.revokeRuntimePermission(
 | `adbDiscoverPairingPort` / `adbDiscoverConnectPort`                                 | 端口发现（API 30+）       |
 | `adbPair` / `adbCheckPairing`                                                       | 配对                  |
 | `adbOpenPairingCheckSession` / `adbCheckPairingSession`                             | 轮询时复用连接             |
+| `adbOpenTcpAuthorizationCheckSession` / `adbCheckTcpAuthorizationSession`           | 轮询时复用连接             |
 | `adbPrepareTcpForStart` / `adbCheckTcpAuthorization` / `adbRequestTcpAuthorization` | 授权                  |
 | `adbSwitchToTcp` / `adbStopTcp` / `adbRestartTcp`                                   | 控制静态端口              |
 | `closeSession`                                                                      | 释放会话句柄              |
 
+配对检查与 TCP 授权检查都提供会话变体，用于在多次轮询之间复用同一条 ADB 连接。
 会话以整型句柄持有，停止轮询后务必 `closeSession`：
 
 ```dart
@@ -704,7 +712,8 @@ dart run build_runner build
   这与文档「使用 priv-core 构建自定义界面」一节一致。
 - `PrivilegeServerInfo.lifecycleBinder` 不跨通道传递，Dart 侧只拿到
   `uid` / `pid` / `protocolVersion` / `selinuxContext`。
-- 文件代理、UserService、Binder 访问尚未接入本插件。
+- UserService 的 Binder 始终留在 Kotlin 侧，跨通道的只有生命周期调用和
+  一个整型连接句柄。
 
 ## 🔗 相关项目
 
