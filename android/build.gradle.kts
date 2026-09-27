@@ -70,7 +70,10 @@ dependencies {
     // Do not add priv-ui here: it requires compileSdk 37 and only provides the
     // Compose PrivilegeScaffold, which this plugin does not use. Apps that want
     // it must raise their own compileSdk and declare it themselves.
-    implementation("io.github.priv-kit:priv-core:0.15.0")
+    // `api`, not `implementation`: the plugin's public API exposes priv-core
+    // types (e.g. PrivilegeExternalStartupBridge), so host apps need them on
+    // their compile classpath to register a bridge or write a UserService.
+    api("io.github.priv-kit:priv-core:0.17.0")
 
     // priv-core calls are suspend functions; declare the runtime explicitly.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
