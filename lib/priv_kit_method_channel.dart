@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'priv_kit_platform_interface.dart';
 import 'src/models/adb.dart';
+import 'src/models/binder.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
@@ -204,6 +205,60 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   @override
   Future<void> stopUserService(PrivUserServiceSpec spec) =>
       methodChannel.invokeMethod<void>('stopUserService', spec.toMap());
+
+  @override
+  Future<bool> binderHasSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) async =>
+      await methodChannel.invokeMethod<bool>(
+        'binderHasSystemService',
+        <String, Object?>{
+          'serviceName': serviceName,
+          'source': source.wireName,
+        },
+      ) ??
+      false;
+
+  @override
+  Future<int?> binderFromSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) => methodChannel.invokeMethod<int>(
+    'binderFromSystemService',
+    <String, Object?>{'serviceName': serviceName, 'source': source.wireName},
+  );
+
+  @override
+  Future<int?> binderServerLifecycle() =>
+      methodChannel.invokeMethod<int>('binderServerLifecycle');
+
+  @override
+  Future<String?> binderGetInterfaceDescriptor(int handle) =>
+      methodChannel.invokeMethod<String>(
+        'binderGetInterfaceDescriptor',
+        <String, Object?>{'handle': handle},
+      );
+
+  @override
+  Future<bool> binderPing(int handle) async =>
+      await methodChannel.invokeMethod<bool>('binderPing', <String, Object?>{
+        'handle': handle,
+      }) ??
+      false;
+
+  @override
+  Future<bool> binderIsAlive(int handle) async =>
+      await methodChannel.invokeMethod<bool>('binderIsAlive', <String, Object?>{
+        'handle': handle,
+      }) ??
+      false;
+
+  @override
+  Future<void> binderClose(int handle) => methodChannel.invokeMethod<void>(
+    'binderClose',
+    <String, Object?>{'handle': handle},
+  );
 
   @override
   Future<PrivFileMetadata> fileMetadata(

@@ -1,3 +1,37 @@
+## 0.0.7
+
+### Binder access
+
+Exposes `priv.kit.core.binder`, so Dart can resolve system services and the
+connected server's lifecycle Binder:
+
+- `binderHasSystemService(name, source)` — whether the service resolves.
+- `binderFromSystemService(name, source)` — an integer handle, or `null` when
+  the service is unavailable.
+- `binderServerLifecycle()` — the server's lifecycle Binder, an ownership token
+  for privileged APIs that release resources when their owner dies.
+- `binderGetInterfaceDescriptor` / `binderPing` / `binderIsAlive` — what Dart
+  is allowed to ask a Binder about itself.
+- `binderClose(handle)` — release a handle.
+
+`PrivBinderServiceSource` selects which process does the lookup:
+`currentProcess` uses `ServiceManager` in the app, `serverProcess` looks inside
+the Privileged Server for services only published to `shell` or root.
+
+**A Binder cannot cross the platform channel**, so Dart only ever holds an
+integer handle. Issuing a service's own transactions stays in Kotlin — the same
+split as a UserService: resolve with
+`PrivilegeBinderWrapper.fromSystemService` and convert the Binder with your
+AIDL's `Stub.asInterface(...)`.
+
+The example app adds `DemoBinderBridge`, which drives the DUMP transaction (the
+one behind `dumpsys`, implemented by every system service) so the round trip
+needs no app-specific AIDL, and uses `PrivilegeBinderCall.orElse` to separate
+`ServerUnavailable` from `BinderDied`.
+
+New error code `BINDER_DIED` for `DeadObjectException`, where the endpoint died
+rather than the server.
+
 ## 0.0.6
 
 ### UserService

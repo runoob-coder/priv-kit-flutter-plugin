@@ -4,6 +4,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'priv_kit_method_channel.dart';
 import 'src/models/adb.dart';
+import 'src/models/binder.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
 import 'src/models/external_startup.dart';
@@ -201,6 +202,72 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// Stops an app-defined UserService.
   Future<void> stopUserService(PrivUserServiceSpec spec) {
     throw UnimplementedError('stopUserService() has not been implemented.');
+  }
+
+  /// Whether [serviceName] can be resolved from [source].
+  Future<bool> binderHasSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) {
+    throw UnimplementedError(
+      'binderHasSystemService() has not been implemented.',
+    );
+  }
+
+  /// Resolves [serviceName] into a handle Dart can inspect.
+  ///
+  /// Returns `null` when the service is not available from [source].
+  ///
+  /// A Binder cannot cross the platform channel, so Dart only gets an integer
+  /// handle. Issuing the service's own transactions has to happen in Kotlin,
+  /// the same way a UserService is called.
+  Future<int?> binderFromSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) {
+    throw UnimplementedError(
+      'binderFromSystemService() has not been implemented.',
+    );
+  }
+
+  /// Handle for the connected server's lifecycle Binder.
+  ///
+  /// Some privileged Binder APIs accept an owner or death token so the remote
+  /// process can release resources when the owner goes away. Pass this Binder
+  /// to bind those resources to the current server process.
+  ///
+  /// It exposes no operations of its own: only [binderPing], [binderIsAlive]
+  /// and [binderClose] work on it, and its identity is stable only for as long
+  /// as this server process lives. Take a fresh handle after every
+  /// [PrivKitPlatform.serverState] change.
+  ///
+  /// Returns `null` when no server is connected.
+  Future<int?> binderServerLifecycle() {
+    throw UnimplementedError(
+      'binderServerLifecycle() has not been implemented.',
+    );
+  }
+
+  /// The interface descriptor reported by [handle], when it has one.
+  Future<String?> binderGetInterfaceDescriptor(int handle) {
+    throw UnimplementedError(
+      'binderGetInterfaceDescriptor() has not been implemented.',
+    );
+  }
+
+  /// Whether [handle] answers a ping.
+  Future<bool> binderPing(int handle) {
+    throw UnimplementedError('binderPing() has not been implemented.');
+  }
+
+  /// Whether the process hosting [handle] is still alive.
+  Future<bool> binderIsAlive(int handle) {
+    throw UnimplementedError('binderIsAlive() has not been implemented.');
+  }
+
+  /// Releases a handle returned by the `binder*` calls.
+  Future<void> binderClose(int handle) {
+    throw UnimplementedError('binderClose() has not been implemented.');
   }
 
   /// Reads one metadata snapshot of [path].

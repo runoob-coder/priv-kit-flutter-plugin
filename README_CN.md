@@ -38,9 +38,11 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 - **命令执行** — 非交互进程，支持汇总输出与流式输出。
 - **文件代理** — 读写与遍历 App 自身无权访问的路径。
 - **UserService** — 让自写的 Kotlin 类以服务端权限运行，生命周期由 Dart 驱动。
+- **Binder 访问** — 解析系统服务与服务端的生命周期 Binder，transaction 本身
+  留在 Kotlin 侧。
 
-Binder 直接访问刻意不对外暴露：Binder 无法通过平台通道传递。替代做法见
-[UserService](#-userservice)——在 Kotlin 侧自行架桥。
+Binder 无法通过平台通道传递，Dart 拿到的是句柄而非 Binder 本身。两侧各能做
+什么见 [Binder 访问](#-binder-访问)。
 
 ## 📋 平台要求
 
@@ -539,6 +541,96 @@ try {
 - **`embedded = true`** —— 跑在 Privileged Server 进程内。绑定更快、省去进程
   启动，但 `destroy()` 只能清理服务自身资源。
 
+## 🔗 Binder 访问
+
+文档：[Binder](https://priv-kit.pages.dev/zh/guide/binder)。
+
+通过已连接的服务端访问 Binder 服务与系统服务。transaction 的调用格式不变——
+应用需要提供对应的系统接口，并自行定义每次调用的含义。
+
+> **Binder 无法通过平台通道传递。** Dart 拿到的是整型句柄，而不是 Binder
+> 本身。发起服务自己的 transaction 是 Kotlin 侧的工作，与调用 UserService 完全
+> 一样。
+
+### 解析系统服务
+
+```dart
+// 服务是否存在？比解析它更轻量。
+final has = await privKit.binderHasSystemService('activity');
+
+final handle = await privKit.binderFromSystemService('activity');
+if (handle != null) {
+  print(await privKit.binderGetInterfaceDescriptor(handle));
+  print(await privKit.binderPing(handle));
+  await privKit.binderClose(handle); // 用完后释放
+}
+```
+
+`PrivBinderServiceSource` 决定由哪个进程执行查找：
+
+```dart
+await privKit.binderFromSystemService(
+  'miui.mqsas.IMQSNative',
+  source: PrivBinderServiceSource.serverProcess,
+);
+```
+
+- `currentProcess` —— 在本 App 进程内通过 `ServiceManager` 查找。
+- `serverProcess` —— 在 Privileged Server 进程内查找。只对 `shell` 或 root
+  可见的服务要用这个。
+
+返回 `null` 是正常结果而非错误：该服务可能在本设备不存在，也可能对执行查找的
+那个进程不可见。
+
+### 发起 transaction
+
+只能在 Kotlin 侧。示例 App 的 `DemoBinderBridge` 用的是 DUMP transaction，
+也就是 `dumpsys` 背后那个——所有系统服务都已实现，因此不需要 App 自定义 AIDL：
+
+```kotlin
+val binder = PrivilegeBinderWrapper.fromSystemService("activity", source)
+ParcelFileDescriptor.open(output, MODE_WRITE_ONLY).use {
+    binder.dump(it.fileDescriptor, args)
+}
+```
+
+其他 transaction 同理：解析出 Binder，用你自己的 AIDL 的
+`Stub.asInterface(...)` 转换后调用，再通过你自己的通道把结果回传 Dart。
+
+### 服务端生命周期 Binder
+
+部分特权 API 接收 owner 或 death token，以便远端进程在 owner 退出时释放资源。
+把下面这个 Binder 交给它们，即可把这些资源绑定到当前服务端进程：
+
+```dart
+final handle = await privKit.binderServerLifecycle();
+```
+
+它不提供任何特权操作或自定义 transaction——Dart 只能 ping、查看存活、释放。
+它的身份只在当前服务端进程内存活期间稳定，因此每次 `serverState` 变化后都要
+重新取句柄，不要跨重连缓存。
+
+### 处理调用失败
+
+经过 wrapper 转发的调用会保留 Binder 原本的异常。若失败后改用其他方式是安全的，
+可以用 `PrivilegeBinderCall.orElse` 区分两种死亡情况——`ServerUnavailable`
+与 `BinderDied`——其余异常保持不变：
+
+```kotlin
+PrivilegeBinderCall.orElse(
+    fallback = { failure ->
+        when (failure) {
+            is PrivilegeBinderCallFailure.ServerUnavailable -> fallbackValue
+            is PrivilegeBinderCallFailure.BinderDied -> fallbackValue
+        }
+    },
+    call = { binder.transact(...) },
+)
+```
+
+只在原调用结果确实未知、且替换一个值不会造成问题时才用它：远端进程有可能在
+完成修改之后才死亡。
+
 ## 🔄 服务端生命周期
 
 ```dart
@@ -656,6 +748,7 @@ await privKit.closeSession(sessionId);
 |----------------------|----------------------------------|
 | `STARTUP_ERROR`      | `PrivilegeStartupException`，启动失败 |
 | `SERVER_UNAVAILABLE` | 服务端 Binder 不存在或已死亡               |
+| `BINDER_DIED`        | 被调用的 Binder 端点自身已死亡               |
 | `COMMAND_ERROR`      | 命令无法启动或执行失败                      |
 | `COMMAND_TIMEOUT`    | 命令超过执行时限                         |
 | `FILE_ERROR`         | 文件操作失败（`IOException`/`ErrnoException`） |
@@ -711,7 +804,8 @@ dart run build_runner build
   `PlatformView` 暴露它；Flutter App 应基于上面的 API 自行实现授权界面，
   这与文档「使用 priv-core 构建自定义界面」一节一致。
 - `PrivilegeServerInfo.lifecycleBinder` 不跨通道传递，Dart 侧只拿到
-  `uid` / `pid` / `protocolVersion` / `selinuxContext`。
+  `uid` / `pid` / `protocolVersion` / `selinuxContext`。需要把它当句柄用时
+  走 [binderServerLifecycle](#-binder-访问)。
 - UserService 的 Binder 始终留在 Kotlin 侧，跨通道的只有生命周期调用和
   一个整型连接句柄。
 

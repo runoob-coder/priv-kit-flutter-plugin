@@ -43,10 +43,12 @@ This plugin covers the parts of [`priv-core`][priv-core] that make sense to driv
 - **File proxy** — read, write and traverse paths your app itself cannot reach.
 - **UserService** — run your own Kotlin class with the server's privileges,
   with the lifecycle driven from Dart.
+- **Binder access** — resolve system services and the server's lifecycle
+  Binder. Transactions themselves stay in Kotlin.
 
-Direct Binder access is deliberately not exposed: a Binder cannot cross a
-platform channel. See [UserService](#-userservice) for the Kotlin-side bridge
-that replaces it.
+A Binder cannot cross the platform channel, so Dart receives handles rather
+than Binders. See [Binder access](#-binder-access) for what that leaves on each
+side.
 
 ## 📋 Requirements
 
@@ -565,6 +567,103 @@ try {
   faster and skips process startup, but `destroy()` may only release the
   service's own resources.
 
+## 🔗 Binder access
+
+Docs: [Binder](https://priv-kit.pages.dev/guide/binder).
+
+Reach Binder services and system services through the connected server. The
+transaction format is unchanged — your app supplies the matching system
+interface and owns whatever the calls mean.
+
+> **A Binder cannot cross the platform channel.** Dart gets an integer handle,
+> never the Binder itself. Issuing a service's own transactions is Kotlin work,
+> exactly like calling a UserService.
+
+### Resolving a system service
+
+```dart
+// Is the service available at all? Cheaper than resolving it.
+final has = await privKit.binderHasSystemService('activity');
+
+final handle = await privKit.binderFromSystemService('activity');
+if (handle != null) {
+  print(await privKit.binderGetInterfaceDescriptor(handle));
+  print(await privKit.binderPing(handle));
+  await privKit.binderClose(handle); // release it when you are done
+}
+```
+
+`PrivBinderServiceSource` picks which process does the lookup:
+
+```dart
+await privKit.binderFromSystemService(
+  'miui.mqsas.IMQSNative',
+  source: PrivBinderServiceSource.serverProcess,
+);
+```
+
+- `currentProcess` — through `ServiceManager` in your own process.
+- `serverProcess` — inside the Privileged Server. Use it for services only
+  published to `shell` or root.
+
+A `null` result is normal, not a failure: the service may be absent on this
+device, or hidden from the process doing the lookup.
+
+### Issuing transactions
+
+Kotlin only. The example app's `DemoBinderBridge` drives the DUMP transaction —
+the one behind `dumpsys`, which every system service already implements, so no
+app-specific AIDL is needed:
+
+```kotlin
+val binder = PrivilegeBinderWrapper.fromSystemService("activity", source)
+ParcelFileDescriptor.open(output, MODE_WRITE_ONLY).use {
+    binder.dump(it.fileDescriptor, args)
+}
+```
+
+Any other transaction works the same way: resolve the Binder, convert it with
+your AIDL's `Stub.asInterface(...)` and call it. Report the result to Dart over
+a channel of your own.
+
+### The server lifecycle Binder
+
+Some privileged APIs take an owner or death token, so the remote process can
+release resources when the owner goes away. Hand them this Binder to tie those
+resources to the current server process instead:
+
+```dart
+final handle = await privKit.binderServerLifecycle();
+```
+
+It exposes no privileged operations and no custom transactions — Dart can only
+ping it, watch it and drop it. Its identity is stable only for as long as this
+server process lives, so take a fresh handle after every `serverState` change
+rather than caching one across reconnections.
+
+### Handling failures
+
+Calls forwarded through a wrapper keep the Binder's own exceptions. When
+falling back is safe, `PrivilegeBinderCall.orElse` separates the two death
+cases — `ServerUnavailable` and `BinderDied` — and leaves every other failure
+propagating unchanged:
+
+```kotlin
+PrivilegeBinderCall.orElse(
+    fallback = { failure ->
+        when (failure) {
+            is PrivilegeBinderCallFailure.ServerUnavailable -> fallbackValue
+            is PrivilegeBinderCallFailure.BinderDied -> fallbackValue
+        }
+    },
+    call = { binder.transact(...) },
+)
+```
+
+Only use it when the original call's outcome is genuinely unknown *and*
+substituting a value is harmless: the remote process may have completed the
+change before dying.
+
 ## 🔄 Server lifecycle
 
 ```dart
@@ -686,6 +785,7 @@ Every failure throws `PrivKitException`:
 |----------------------|----------------------------------------------------------|
 | `STARTUP_ERROR`      | `PrivilegeStartupException` — the server could not start |
 | `SERVER_UNAVAILABLE` | the server Binder is missing or dead                     |
+| `BINDER_DIED`        | the called Binder endpoint itself died                   |
 | `COMMAND_ERROR`      | a command could not start or complete                    |
 | `COMMAND_TIMEOUT`    | a command exceeded its deadline                          |
 | `FILE_ERROR`         | a filesystem operation failed (`IOException`/`ErrnoException`) |
@@ -743,7 +843,8 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
   through a `PlatformView`. Build your own authorization UI on top of the API
   above, which matches the "custom UI with priv-core" approach in the docs.
 - `PrivilegeServerInfo.lifecycleBinder` is not sent across the channel. Dart
-  receives `uid`, `pid`, `protocolVersion` and `selinuxContext` only.
+  receives `uid`, `pid`, `protocolVersion` and `selinuxContext` only. Use
+  [binderServerLifecycle](#-binder-access) when you need it as a handle.
 - A UserService's Binder stays in Kotlin: only the lifecycle calls and an
   integer connection handle cross the channel.
 

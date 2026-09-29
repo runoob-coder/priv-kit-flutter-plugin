@@ -446,4 +446,72 @@ void main() {
       isA<PrivCommandExit>().having((e) => e.exitCode, 'exitCode', 7),
     ]);
   });
+
+  test('binderHasSystemService forwards the name and the source', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          if (methodCall.method == 'binderHasSystemService') return true;
+          return null;
+        });
+
+    final has = await platform.binderHasSystemService(
+      'activity',
+      source: PrivBinderServiceSource.serverProcess,
+    );
+    expect(has, isTrue);
+
+    final call = log.single;
+    expect(call.arguments['serviceName'], 'activity');
+    expect(call.arguments['source'], 'SERVER_PROCESS');
+  });
+
+  test('binderHasSystemService defaults to the current process', () async {
+    await platform.binderHasSystemService('package');
+    expect(log.single.arguments['source'], 'CURRENT_PROCESS');
+  });
+
+  test('binderFromSystemService returns null when unavailable', () async {
+    final handle = await platform.binderFromSystemService('nope');
+    expect(handle, isNull);
+  });
+
+  test('binder handles are passed through as integers', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return switch (methodCall.method) {
+            'binderFromSystemService' => 7,
+            'binderGetInterfaceDescriptor' => 'android.app.IActivityManager',
+            'binderPing' => true,
+            'binderIsAlive' => true,
+            _ => null,
+          };
+        });
+
+    final handle = await platform.binderFromSystemService('activity');
+    expect(handle, 7);
+    expect(
+      await platform.binderGetInterfaceDescriptor(7),
+      'android.app.IActivityManager',
+    );
+    expect(await platform.binderPing(7), isTrue);
+    expect(await platform.binderIsAlive(7), isTrue);
+
+    await platform.binderClose(7);
+    final close = log.lastWhere((c) => c.method == 'binderClose');
+    expect(close.arguments['handle'], 7);
+  });
+
+  test(
+    'binderServerLifecycle returns null when nothing is connected',
+    () async {
+      expect(await platform.binderServerLifecycle(), isNull);
+    },
+  );
+
+  test('binderPing treats an unreachable endpoint as false', () async {
+    final ping = await platform.binderPing(42);
+    expect(ping, isFalse);
+  });
 }

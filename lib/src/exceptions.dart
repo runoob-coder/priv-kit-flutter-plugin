@@ -8,6 +8,12 @@ abstract final class PrivKitErrorCode {
   /// The Privileged Server Binder is missing or has died.
   static const String serverUnavailable = 'SERVER_UNAVAILABLE';
 
+  /// The Binder endpoint being called through died (`DeadObjectException`).
+  ///
+  /// Raised instead of [serverUnavailable] when the failure is the target
+  /// endpoint's own death rather than the server's.
+  static const String binderDied = 'BINDER_DIED';
+
   /// A privileged command could not be started or completed.
   static const String command = 'COMMAND_ERROR';
 

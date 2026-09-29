@@ -6,6 +6,7 @@ library;
 
 export 'src/exceptions.dart';
 export 'src/models/adb.dart';
+export 'src/models/binder.dart';
 export 'src/models/command.dart';
 export 'src/models/config.dart';
 export 'src/models/external_startup.dart';

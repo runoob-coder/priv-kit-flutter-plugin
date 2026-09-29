@@ -42,6 +42,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var commands: PrivKitCommands
     private lateinit var files: PrivKitFiles
     private val userServices = PrivKitUserServices()
+    private val binders = PrivKitBinders()
     private val operations = HashMap<String, Job>()
     private val operationLock = Any()
     private var serverStateJob: Job? = null
@@ -308,6 +309,32 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     }
                 }
 
+                binders.handles(call.method) -> runAsync(result) {
+                    when (call.method) {
+                        "binderHasSystemService" -> binders.hasSystemService(call)
+
+                        "binderFromSystemService" -> binders.fromSystemService(call)
+
+                        "binderServerLifecycle" -> binders.serverLifecycle()
+
+                        "binderGetInterfaceDescriptor" ->
+                            binders.interfaceDescriptor(call)
+
+                        "binderPing" -> binders.ping(call)
+
+                        "binderIsAlive" -> binders.isAlive(call)
+
+                        "binderClose" -> {
+                            binders.close(call)
+                            null
+                        }
+
+                        else -> throw IllegalArgumentException(
+                            "Unknown binder method: ${call.method}",
+                        )
+                    }
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -325,6 +352,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         commands.closeAll()
         files.closeAll()
         userServices.closeAll(scope)
+        binders.closeAll()
         scope.cancel()
     }
 

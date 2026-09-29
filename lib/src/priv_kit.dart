@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../priv_kit_platform_interface.dart';
 import 'exceptions.dart';
 import 'models/adb.dart';
+import 'models/binder.dart';
 import 'models/command.dart';
 import 'models/config.dart';
 import 'models/external_startup.dart';
@@ -224,6 +225,72 @@ class PrivKit {
   /// Stops an app-defined UserService.
   Future<void> stopUserService(PrivUserServiceSpec spec) =>
       _guard(() => _platform.stopUserService(spec));
+
+  /// Whether [serviceName] can be resolved from [source].
+  ///
+  /// Cheaper than [binderFromSystemService] when you only need to know whether
+  /// the service exists — for example to decide which source to use.
+  Future<bool> binderHasSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) => _guard(
+    () => _platform.binderHasSystemService(serviceName, source: source),
+  );
+
+  /// Resolves [serviceName] into a handle Dart can inspect, or `null` when the
+  /// service is not available from [source].
+  ///
+  /// **A Binder cannot cross the platform channel.** Dart gets an integer
+  /// handle, and can only ask the Binder about itself — [binderPing],
+  /// [binderIsAlive], [binderGetInterfaceDescriptor]. Issuing the service's own
+  /// transactions is Kotlin work, exactly like calling a UserService: resolve
+  /// the Binder there with
+  /// `PrivilegeBinderWrapper.fromSystemService(name)`, convert it with your
+  /// AIDL's `Stub.asInterface(...)` and report the result over your own
+  /// channel.
+  ///
+  /// Release the handle with [binderClose] when you are done with it.
+  Future<int?> binderFromSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+  }) => _guard(
+    () => _platform.binderFromSystemService(serviceName, source: source),
+  );
+
+  /// Handle for the connected server's lifecycle Binder, or `null` when no
+  /// server is connected.
+  ///
+  /// Some privileged Binder APIs take an owner or death token so the remote
+  /// process can release resources when the owner goes away. This Binder binds
+  /// those resources to the current server process instead.
+  ///
+  /// It exposes no privileged operations and no custom transactions — only
+  /// [binderPing], [binderIsAlive] and [binderClose] work on it. Its identity
+  /// is stable for as long as this server process lives, so take a fresh handle
+  /// after every [serverState] change rather than caching one across
+  /// reconnections.
+  Future<int?> binderServerLifecycle() =>
+      _guard(_platform.binderServerLifecycle);
+
+  /// The interface descriptor [handle] reports, when it has one.
+  Future<String?> binderGetInterfaceDescriptor(int handle) =>
+      _guard(() => _platform.binderGetInterfaceDescriptor(handle));
+
+  /// Whether [handle] answers a ping.
+  ///
+  /// For a service resolved with [PrivBinderServiceSource.serverProcess] this
+  /// checks the server side rather than the endpoint itself.
+  Future<bool> binderPing(int handle) =>
+      _guard(() => _platform.binderPing(handle));
+
+  /// Whether the process hosting [handle] is still alive.
+  Future<bool> binderIsAlive(int handle) =>
+      _guard(() => _platform.binderIsAlive(handle));
+
+  /// Releases a handle from [binderFromSystemService] or
+  /// [binderServerLifecycle].
+  Future<void> binderClose(int handle) =>
+      _guard(() => _platform.binderClose(handle));
 
   /// Reads one metadata snapshot of [path].
   ///

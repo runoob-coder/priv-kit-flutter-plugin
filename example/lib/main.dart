@@ -290,6 +290,10 @@ class _MyAppState extends State<MyApp> {
     'priv_kit_example/user_service',
   );
 
+  /// The Binder transactions themselves run here, in Kotlin: see
+  /// `DemoBinderBridge`.
+  static const _binderChannel = MethodChannel('priv_kit_example/binder');
+
   PrivUserServiceSpec _userServiceSpec(bool embedded) => PrivUserServiceSpec(
     serviceClassName: 'com.noob_coder.priv_kit_example.DemoPrivilegeService',
     tag: embedded ? 'demo-embedded' : 'demo-standalone',
@@ -344,6 +348,85 @@ class _MyAppState extends State<MyApp> {
     await _privKit.stopUserService(_userServiceSpec(embedded));
     _log('stopUserService -> ${_userServiceSpec(embedded).tag}');
   });
+
+  /// Resolves a service and reports everything Dart is allowed to know about
+  /// it: whether it exists, its descriptor, and whether it answers.
+  Future<void> _probeBinder(
+    String serviceName,
+    PrivBinderServiceSource source,
+  ) => _run(() async {
+    final has = await _privKit.binderHasSystemService(
+      serviceName,
+      source: source,
+    );
+    _log('binderHasSystemService($serviceName, ${source.name}) -> $has');
+    if (!has) return;
+
+    final handle = await _privKit.binderFromSystemService(
+      serviceName,
+      source: source,
+    );
+    if (handle == null) {
+      _log('binderFromSystemService -> null（服务不可用）');
+      return;
+    }
+    try {
+      final descriptor = await _privKit.binderGetInterfaceDescriptor(handle);
+      final alive = await _privKit.binderIsAlive(handle);
+      final ping = await _privKit.binderPing(handle);
+      _log(
+        'binderFromSystemService -> handle=$handle\n'
+        '  descriptor=$descriptor\n'
+        '  isAlive=$alive ping=$ping',
+      );
+    } finally {
+      await _privKit.binderClose(handle);
+    }
+  });
+
+  /// A real Binder transaction, which has to be issued in Kotlin.
+  ///
+  /// DUMP is the transaction behind `dumpsys`, so it needs no app-specific
+  /// AIDL and still shows the call travelling through the server.
+  Future<void> _dumpBinder(
+    String serviceName,
+    PrivBinderServiceSource source,
+    String args,
+  ) => _run(() async {
+    final output = await _binderChannel.invokeMethod<String>(
+      'dump',
+      <String, Object?>{
+        'serviceName': serviceName,
+        'source': _sourceWireName(source),
+        'args': args.trim().isEmpty
+            ? const <String>[]
+            : args.trim().split(RegExp(r'\s+')),
+      },
+    );
+    _log('DUMP $serviceName ->\n$output');
+  });
+
+  /// The server's own lifecycle Binder: an ownership token for privileged APIs
+  /// that release resources when their owner dies.
+  Future<void> _binderLifecycle() => _run(() async {
+    final handle = await _privKit.binderServerLifecycle();
+    if (handle == null) {
+      _log('binderServerLifecycle -> null（未连接服务端）');
+      return;
+    }
+    try {
+      final alive = await _privKit.binderIsAlive(handle);
+      final ping = await _privKit.binderPing(handle);
+      _log('binderServerLifecycle -> handle=$handle isAlive=$alive ping=$ping');
+    } finally {
+      await _privKit.binderClose(handle);
+    }
+  });
+
+  static String _sourceWireName(PrivBinderServiceSource source) =>
+      source == PrivBinderServiceSource.serverProcess
+      ? 'SERVER_PROCESS'
+      : 'CURRENT_PROCESS';
 
   @override
   Widget build(BuildContext context) {
@@ -436,6 +519,13 @@ class _MyAppState extends State<MyApp> {
               onBind: _bindUserService,
               onCall: _callDemoUserService,
               onStop: _stopUserService,
+            ),
+            const SizedBox(height: 12),
+            _BinderPanel(
+              enabled: server != null && !_busy,
+              onProbe: _probeBinder,
+              onDump: _dumpBinder,
+              onLifecycle: _binderLifecycle,
             ),
             const SizedBox(height: 16),
             Text('日志', style: Theme.of(context).textTheme.titleSmall),
@@ -840,6 +930,127 @@ class _UserServicePanelState extends State<_UserServicePanel> {
                 OutlinedButton(
                   onPressed: enabled ? () => widget.onStop(_embedded) : null,
                   child: const Text('停止'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Exercises Binder access: resolve a system service from Dart, then issue a
+/// real transaction from Kotlin.
+class _BinderPanel extends StatefulWidget {
+  const _BinderPanel({
+    required this.enabled,
+    required this.onProbe,
+    required this.onDump,
+    required this.onLifecycle,
+  });
+
+  final bool enabled;
+  final void Function(String serviceName, PrivBinderServiceSource source)
+  onProbe;
+  final void Function(
+    String serviceName,
+    PrivBinderServiceSource source,
+    String args,
+  )
+  onDump;
+  final void Function() onLifecycle;
+
+  @override
+  State<_BinderPanel> createState() => _BinderPanelState();
+}
+
+class _BinderPanelState extends State<_BinderPanel> {
+  final _serviceName = TextEditingController(text: 'activity');
+  final _dumpArgs = TextEditingController();
+  var _serverProcess = false;
+
+  @override
+  void dispose() {
+    _serviceName.dispose();
+    _dumpArgs.dispose();
+    super.dispose();
+  }
+
+  PrivBinderServiceSource get _source => _serverProcess
+      ? PrivBinderServiceSource.serverProcess
+      : PrivBinderServiceSource.currentProcess;
+
+  void _submit({required bool dump}) {
+    final name = _serviceName.text.trim();
+    if (name.isEmpty) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (dump) {
+      widget.onDump(name, _source, _dumpArgs.text);
+    } else {
+      widget.onProbe(name, _source);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.enabled;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Binder', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(
+              'Binder 无法通过平台通道传递：Dart 只能拿到整型句柄，做存活与描述符'
+              '查询。真正的 transaction 必须在 Kotlin 侧发起，见 DemoBinderBridge。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _serviceName,
+              enabled: enabled,
+              decoration: const InputDecoration(
+                labelText: '系统服务名',
+                hintText: 'activity',
+                isDense: true,
+              ),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('从服务端进程查找'),
+              subtitle: const Text('部分服务只对 shell / root 可见'),
+              value: _serverProcess,
+              onChanged: enabled
+                  ? (value) => setState(() => _serverProcess = value)
+                  : null,
+            ),
+            TextField(
+              controller: _dumpArgs,
+              enabled: enabled,
+              decoration: const InputDecoration(
+                labelText: 'DUMP 参数（可选，空格分隔）',
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: enabled ? () => _submit(dump: false) : null,
+                  child: const Text('检查服务（句柄）'),
+                ),
+                FilledButton.tonal(
+                  onPressed: enabled ? () => _submit(dump: true) : null,
+                  child: const Text('DUMP（Kotlin 侧）'),
+                ),
+                OutlinedButton(
+                  onPressed: enabled ? widget.onLifecycle : null,
+                  child: const Text('服务端生命周期 Binder'),
                 ),
               ],
             ),
