@@ -117,14 +117,25 @@ class PrivKit {
   /// The result is sorted and de-duplicated. It does not cover AppOps, SELinux
   /// policy or service internal authorization, so an empty list does not
   /// guarantee that every privileged operation succeeds.
+  ///
+  /// Root servers ([PrivServerInfo.isRoot]) always return an empty list.
   Future<List<String>> getDeniedServerPermissions() =>
       _guard(_platform.getDeniedServerPermissions);
 
   /// Checks one permission against the connected server.
+  ///
+  /// Returns [privilegePermissionGranted] (0) or
+  /// [privilegePermissionDenied] (-1).
+  ///
+  /// Root servers ([PrivServerInfo.isRoot]) are not queried through the system:
+  /// they return [privilegePermissionGranted] directly. The connection is still
+  /// validated, so the call fails when the server is gone.
   Future<int> checkServerPermission(String permission) =>
       _guard(() => _platform.checkServerPermission(permission));
 
   /// Whether the connected server cannot grant runtime permissions.
+  ///
+  /// Root servers ([PrivServerInfo.isRoot]) are never restricted.
   Future<bool> isPermissionRestricted() =>
       _guard(_platform.isPermissionRestricted);
 

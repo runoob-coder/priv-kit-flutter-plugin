@@ -68,7 +68,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.1) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -714,6 +714,14 @@ that every privileged operation succeeds.
 
 Since `priv-core` 0.12.1 these results no longer go stale: changing a vendor USB
 debugging security setting is picked up without restarting the server.
+
+### Root servers
+
+A root server (`PrivServerInfo.isRoot`, UID 0) short-circuits these queries:
+`checkServerPermission` returns `privilegePermissionGranted` without asking the
+system, `getDeniedServerPermissions` returns an empty list, and
+`isPermissionRestricted` returns `false`. `checkServerPermission` still
+validates the connection, so it keeps working as a liveness check.
 
 ### Runtime permissions for any package
 

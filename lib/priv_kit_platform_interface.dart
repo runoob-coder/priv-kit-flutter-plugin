@@ -102,6 +102,8 @@ abstract class PrivKitPlatform extends PlatformInterface {
   }
 
   /// Permissions declared for the server's packages but denied to its process.
+  ///
+  /// Root servers always return an empty list.
   Future<List<String>> getDeniedServerPermissions() {
     throw UnimplementedError(
       'getDeniedServerPermissions() has not been implemented.',
@@ -112,6 +114,9 @@ abstract class PrivKitPlatform extends PlatformInterface {
   ///
   /// Returns `PackageManager.PERMISSION_GRANTED` (0) or
   /// `PERMISSION_DENIED` (-1).
+  ///
+  /// Root servers are not queried through the system and return
+  /// `PERMISSION_GRANTED` directly; the connection is still validated.
   Future<int> checkServerPermission(String permission) {
     throw UnimplementedError(
       'checkServerPermission() has not been implemented.',
@@ -119,6 +124,8 @@ abstract class PrivKitPlatform extends PlatformInterface {
   }
 
   /// Whether the connected server cannot grant runtime permissions.
+  ///
+  /// Root servers are never restricted.
   Future<bool> isPermissionRestricted() {
     throw UnimplementedError(
       'isPermissionRestricted() has not been implemented.',

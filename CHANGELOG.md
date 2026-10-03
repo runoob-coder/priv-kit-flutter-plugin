@@ -1,3 +1,15 @@
+## 0.0.8
+
+### Upgrade priv-core 0.17.0 → 0.17.1
+
+`checkServerPermission()` now returns `PERMISSION_GRANTED` directly for root
+servers (UID 0), skipping the system permission query. The connection is still
+validated, so the call keeps failing when the server is gone.
+
+This matches the behaviour already documented for `getDeniedServerPermissions()`
+(empty list for root) and `isPermissionRestricted()` (`false` for root); the Dart
+docs and both READMEs now state the root short-circuit for all three.
+
 ## 0.0.7
 
 ### Binder access

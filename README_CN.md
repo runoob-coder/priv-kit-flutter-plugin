@@ -62,7 +62,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.1），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -678,6 +678,13 @@ Android 权限——系统未定义的权限会被排除。它不覆盖 AppOps�
 
 从 `priv-core` 0.12.1 起，该结果不再陈旧：修改厂商 USB 调试安全设置后，
 无需重启服务端即可反映到结果中。
+
+### Root 服务端
+
+Root 服务端（`PrivServerInfo.isRoot`，UID 0）会短路这些查询：
+`checkServerPermission` 不再询问系统，直接返回 `privilegePermissionGranted`；
+`getDeniedServerPermissions` 返回空列表；`isPermissionRestricted` 返回 `false`。
+`checkServerPermission` 仍会校验连接，因此它依然可以作为存活检查使用。
 
 ### 任意包的运行时权限
 
