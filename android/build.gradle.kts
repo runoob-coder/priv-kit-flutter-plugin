@@ -73,7 +73,7 @@ dependencies {
     // `api`, not `implementation`: the plugin's public API exposes priv-core
     // types (e.g. PrivilegeExternalStartupBridge), so host apps need them on
     // their compile classpath to register a bridge or write a UserService.
-    api("io.github.priv-kit:priv-core:0.17.1")
+    api("io.github.priv-kit:priv-core:0.17.2")
 
     // priv-core calls are suspend functions; declare the runtime explicitly.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

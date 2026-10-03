@@ -1,3 +1,11 @@
+## 0.0.9
+
+### Upgrade priv-core 0.17.1 → 0.17.2
+
+`PrivilegeBinderWrapper.shellCommand()` is now kept under R8, so it stays
+callable from Kotlin in release builds. No API changed and the Dart surface is
+untouched.
+
 ## 0.0.8
 
 ### Upgrade priv-core 0.17.0 → 0.17.1

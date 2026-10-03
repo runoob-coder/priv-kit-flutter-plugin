@@ -62,7 +62,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.1），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.2），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
