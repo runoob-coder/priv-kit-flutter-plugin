@@ -300,6 +300,40 @@ void main() {
     expect(config.isDefault, isFalse);
   });
 
+  test('getRuntimeConfig decodes the crash log directory', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return <String, Object?>{
+            'followDeathDelayMillis': 60000,
+            'activeReconnectOnOwnerDeath': true,
+            'crashLogDirectory':
+                '/sdcard/Android/data/com.example/files/crashes',
+          };
+        });
+
+    final config = await platform.getRuntimeConfig();
+    expect(
+      config.crashLogDirectory,
+      '/sdcard/Android/data/com.example/files/crashes',
+    );
+    expect(config.isDefault, isFalse);
+  });
+
+  test('getRuntimeConfig reports a missing crash log directory', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return <String, Object?>{
+            'followDeathDelayMillis': 60000,
+            'activeReconnectOnOwnerDeath': true,
+            'crashLogDirectory': null,
+          };
+        });
+
+    expect((await platform.getRuntimeConfig()).crashLogDirectory, isNull);
+  });
+
   test('configureRuntime forwards both fields', () async {
     await platform.configureRuntime(
       followDeathDelayMillis: 30000,
@@ -317,6 +351,18 @@ void main() {
     final call = log.singleWhere((c) => c.method == 'configureRuntime');
     expect(call.arguments['activeReconnectOnOwnerDeath'], true);
     expect(call.arguments['followDeathDelayMillis'], isNull);
+  });
+
+  test('configureRuntime forwards the crash log directory', () async {
+    await platform.configureRuntime(
+      crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
+    );
+
+    final call = log.singleWhere((c) => c.method == 'configureRuntime');
+    expect(
+      call.arguments['crashLogDirectory'],
+      '/sdcard/Android/data/com.example/files/crashes',
+    );
   });
 
   test('getDeniedServerPermissions', () async {

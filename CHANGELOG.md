@@ -1,3 +1,15 @@
+## 0.0.10
+
+### Upgrade priv-core 0.17.2 → 0.17.4
+
+The server and dedicated UserServices now write a report when they die on an
+uncaught Java/Kotlin exception: `readCrashLogs()` returns them as `PrivCrashLog`
+values, newest first, and `configureRuntime(crashLogDirectory:)` chooses where
+they land. They are read through the file proxy, so a server must be connected,
+and nothing deletes them. `fileWalk()` additionally accepts a symbolic-link root
+such as `/sdcard`. Otherwise nothing changes: a rejected ADB setting write only
+reports a better message.
+
 ## 0.0.9
 
 ### Upgrade priv-core 0.17.1 → 0.17.2

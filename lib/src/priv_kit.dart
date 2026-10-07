@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
@@ -8,6 +9,7 @@ import 'models/adb.dart';
 import 'models/binder.dart';
 import 'models/command.dart';
 import 'models/config.dart';
+import 'models/crash_log.dart';
 import 'models/external_startup.dart';
 import 'models/file.dart';
 import 'models/permission.dart';
@@ -496,15 +498,73 @@ class PrivKit {
   /// Omitted fields keep their current value. The change is pushed to the
   /// connected server and applies to the **next** owner death: a reconnect flow
   /// that already started keeps the values it captured when the owner died.
+  ///
+  /// [crashLogDirectory] must be absolute and cover only this app and Android
+  /// user, for example the value of `getExternalFilesDir("privilege-crashes")`.
+  /// Set it as early as possible: it reaches the server through the native
+  /// startup command, so a process started afterwards still writes to the
+  /// previous location. `null` keeps the directory unchanged.
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
+    String? crashLogDirectory,
   }) => _guard(
     () => _platform.configureRuntime(
       followDeathDelayMillis: followDeathDelayMillis,
       activeReconnectOnOwnerDeath: activeReconnectOnOwnerDeath,
+      crashLogDirectory: crashLogDirectory,
     ),
   );
+
+  /// Reads the crash reports written by privileged processes.
+  ///
+  /// Scans [directory], defaulting to the [PrivRuntimeConfig.crashLogDirectory]
+  /// reported by [getRuntimeConfig], and — unless [includeFallbackDirectory] is
+  /// false — also [privilegeCrashLogFallbackDirectory], where reports land when
+  /// no directory is configured. Reports are sorted newest first.
+  ///
+  /// Every scan runs through the file proxy, so a Privileged Server has to be
+  /// connected; an ordinary app cannot list the shared fallback directory. The
+  /// fallback is shared between apps and users, so filter by
+  /// [PrivCrashLog.applicationId] and [PrivCrashLog.userId] when it matters.
+  ///
+  /// Only `priv-crash_*.json` files below [privilegeCrashLogMaxBytes] are
+  /// decoded. Cleanup belongs to the caller: priv-core never deletes a report.
+  /// Fails with [PrivKitErrorCode.file] when a directory cannot be listed.
+  Future<List<PrivCrashLog>> readCrashLogs({
+    String? directory,
+    bool includeFallbackDirectory = true,
+  }) async {
+    final configured =
+        directory ?? (await getRuntimeConfig()).crashLogDirectory;
+    final directories = <String>{
+      if (configured != null && configured.isNotEmpty) configured,
+      if (includeFallbackDirectory) privilegeCrashLogFallbackDirectory,
+    };
+    final reports = <PrivCrashLog>[];
+    await _guard(() async {
+      for (final current in directories) {
+        await for (final entry in fileWalk(current, maxDepth: 1)) {
+          if (!entry.name.startsWith(privilegeCrashLogFilePrefix) ||
+              !entry.name.endsWith(privilegeCrashLogFileSuffix)) {
+            continue;
+          }
+          if ((entry.metadata?.sizeBytes ?? 0) > privilegeCrashLogMaxBytes) {
+            continue;
+          }
+          final json = jsonDecode(
+            utf8.decode(await fileReadAllBytes(entry.absolutePath)),
+          );
+          if (json is! Map) continue;
+          reports.add(PrivCrashLog.fromJson(json));
+        }
+      }
+    });
+    reports.sort(
+      (a, b) => b.crashedAtEpochMillis.compareTo(a.crashedAtEpochMillis),
+    );
+    return reports;
+  }
 
   /// The device-side shell command that starts the native starter.
   ///

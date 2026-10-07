@@ -9,6 +9,7 @@ export 'src/models/adb.dart';
 export 'src/models/binder.dart';
 export 'src/models/command.dart';
 export 'src/models/config.dart';
+export 'src/models/crash_log.dart';
 export 'src/models/external_startup.dart';
 export 'src/models/file.dart';
 export 'src/models/permission.dart';

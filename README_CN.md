@@ -37,6 +37,7 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 - **ADB 配对与 TCP 控制** — 配对、授权检查、`adb tcpip` 等。
 - **命令执行** — 非交互进程，支持汇总输出与流式输出。
 - **文件代理** — 读写与遍历 App 自身无权访问的路径。
+- **崩溃日志** — 读取特权进程因未捕获异常退出时写下的报告。
 - **UserService** — 让自写的 Kotlin 类以服务端权限运行，生命周期由 Dart 驱动。
 - **Binder 访问** — 解析系统服务与服务端的生命周期 Binder，transaction 本身
   留在 Kotlin 侧。
@@ -62,7 +63,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.2），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.4），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -435,6 +436,9 @@ await for (final entry in privKit.fileWalk('/data/local/tmp', maxDepth: 1)) {
 `maxDepth: 1` 是非递归的一层列表；省略则遍历整棵子树。`skipDirectoryGlobs`
 用于剪掉匹配的目录名。取消订阅即停止遍历。
 
+自 priv-core 0.17.3 起，根节点本身可以是符号链接（例如 `/sdcard`），且其父
+目录无需可列举，因此 `/storage/emulated/0` 也可以直接打开。
+
 `entry.metadata` 为 null 表示服务端能枚举该名字但读不到它的属性——这类条目
 会被发出但不会进入。
 
@@ -647,20 +651,56 @@ await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
 
 ## ⚙️ 运行时配置
 
-控制服务端在 owner 进程死亡时的行为：
+控制服务端在 owner 进程死亡时的行为，以及崩溃报告的落盘目录：
 
 ```dart
 final config = await privKit.getRuntimeConfig();
 print(config.followDeathDelay); // 默认 10 分钟
+print(config.crashLogDirectory); // 默认 null，即 /data/local/tmp
 
 await privKit.configureRuntime(
   followDeathDelayMillis: 60000, // 只等 1 分钟
   activeReconnectOnOwnerDeath: true,
+  crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
 );
 ```
 
 省略的字段保持当前值。变更会推送到已连接的服务端，并作用于**下一次** owner
 死亡——已经启动的重连流程会沿用它在 owner 死亡时捕获的值。
+
+`crashLogDirectory` 应在启动阶段尽早设置，早于启动服务端或读取
+`getNativeStarterCommand()`：该目录通过进程的启动命令下发。请使用「一个 App +
+一个 Android 用户」独占的目录（例如 Kotlin 侧的
+`getExternalFilesDir("privilege-crashes")`），因为写在那里的报告不会带包名
+标记。
+
+## 💥 崩溃日志
+
+当 Privileged Server 或独立的 UserService 进程因未捕获的 Java/Kotlin 异常
+退出时，它会把报告写成 UTF-8 JSON，下面的 API 负责把它读回来：
+
+```dart
+final reports = await privKit.readCrashLogs(); // 最新的排在最前
+for (final report in reports) {
+  print('${report.crashedAt} ${report.exceptionType}: '
+      '${report.exceptionMessage}');
+  print(report.stackTrace);
+}
+```
+
+`readCrashLogs()` 会扫描已配置的 `crashLogDirectory`，以及未配置目录时报告
+实际落盘的共享兜底目录 `/data/local/tmp`。全部读取都走文件代理，因此**必须
+有已连接的服务端**。由此产生几点约束：
+
+- 只解码 1 MiB 以内的 `priv-crash_*.json`，写了一半的临时文件与无关文件会被
+  忽略。
+- `/data/local/tmp` 由多个 App 与用户共享，展示前请先核对
+  `report.applicationId` 与 `report.userId`。
+- native 崩溃、`SIGKILL`，以及启动配置解析完成前就发生的失败都不会生成文件，
+  这类情况仍然只能看 Logcat。
+- 这些文件不会被自动清理，读完请用 [`fileDelete`](#-文件代理) 自行删除。
+
+文档：[崩溃日志](https://priv-kit.pages.dev/zh/guide/activation#crash-logs)。
 
 ## 🔐 服务端权限
 

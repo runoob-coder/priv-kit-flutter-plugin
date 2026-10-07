@@ -19,6 +19,10 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
   const factory PrivRuntimeConfig({
     required int followDeathDelayMillis,
     required bool activeReconnectOnOwnerDeath,
+
+    /// Absolute directory the server writes crash reports to, or `null` when
+    /// only `/data/local/tmp` is used.
+    String? crashLogDirectory,
   }) = _PrivRuntimeConfig;
 
   const PrivRuntimeConfig._();
@@ -32,12 +36,14 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
         activeReconnectOnOwnerDeath:
             map['activeReconnectOnOwnerDeath'] as bool? ??
             privilegeDefaultActiveReconnectOnOwnerDeath,
+        crashLogDirectory: map['crashLogDirectory'] as String?,
       );
 
   /// Encodes the configuration for the Android side.
   Map<String, Object?> toMap() => <String, Object?>{
     'followDeathDelayMillis': followDeathDelayMillis,
     'activeReconnectOnOwnerDeath': activeReconnectOnOwnerDeath,
+    'crashLogDirectory': crashLogDirectory,
   };
 
   /// How long the server waits for the owner process to reconnect.
@@ -48,5 +54,6 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
   bool get isDefault =>
       followDeathDelayMillis == privilegeDefaultFollowDeathDelayMillis &&
       activeReconnectOnOwnerDeath ==
-          privilegeDefaultActiveReconnectOnOwnerDeath;
+          privilegeDefaultActiveReconnectOnOwnerDeath &&
+      crashLogDirectory == null;
 }

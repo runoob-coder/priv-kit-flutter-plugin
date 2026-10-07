@@ -427,10 +427,13 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// Replaces the owner-death reconnect policy.
   ///
   /// Omitted fields keep their current value. The change is pushed to the
-  /// connected server and applies to the next owner death.
+  /// connected server and applies to the next owner death. Set
+  /// [crashLogDirectory] during application initialization, before reading
+  /// [getNativeStarterCommand] or starting the server.
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
+    String? crashLogDirectory,
   }) {
     throw UnimplementedError('configureRuntime() has not been implemented.');
   }

@@ -15,7 +15,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PrivRuntimeConfig {
 
- int get followDeathDelayMillis; bool get activeReconnectOnOwnerDeath;
+ int get followDeathDelayMillis; bool get activeReconnectOnOwnerDeath;/// Absolute directory the server writes crash reports to, or `null` when
+/// only `/data/local/tmp` is used.
+ String? get crashLogDirectory;
 /// Create a copy of PrivRuntimeConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +29,20 @@ $PrivRuntimeConfigCopyWith<PrivRuntimeConfig> get copyWith => _$PrivRuntimeConfi
 @override
 bool operator ==(Object other) {
   final _this = this as PrivRuntimeConfig;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PrivRuntimeConfig&&(identical(other.followDeathDelayMillis, _this.followDeathDelayMillis) || other.followDeathDelayMillis == _this.followDeathDelayMillis)&&(identical(other.activeReconnectOnOwnerDeath, _this.activeReconnectOnOwnerDeath) || other.activeReconnectOnOwnerDeath == _this.activeReconnectOnOwnerDeath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PrivRuntimeConfig&&(identical(other.followDeathDelayMillis, _this.followDeathDelayMillis) || other.followDeathDelayMillis == _this.followDeathDelayMillis)&&(identical(other.activeReconnectOnOwnerDeath, _this.activeReconnectOnOwnerDeath) || other.activeReconnectOnOwnerDeath == _this.activeReconnectOnOwnerDeath)&&(identical(other.crashLogDirectory, _this.crashLogDirectory) || other.crashLogDirectory == _this.crashLogDirectory));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PrivRuntimeConfig;
-  return Object.hash(runtimeType,_this.followDeathDelayMillis,_this.activeReconnectOnOwnerDeath);
+  return Object.hash(runtimeType,_this.followDeathDelayMillis,_this.activeReconnectOnOwnerDeath,_this.crashLogDirectory);
 }
 
 @override
 String toString() {
   final _this = this as PrivRuntimeConfig;
-  return 'PrivRuntimeConfig(followDeathDelayMillis: ${_this.followDeathDelayMillis}, activeReconnectOnOwnerDeath: ${_this.activeReconnectOnOwnerDeath})';
+  return 'PrivRuntimeConfig(followDeathDelayMillis: ${_this.followDeathDelayMillis}, activeReconnectOnOwnerDeath: ${_this.activeReconnectOnOwnerDeath}, crashLogDirectory: ${_this.crashLogDirectory})';
 }
 
 
@@ -51,7 +53,7 @@ abstract mixin class $PrivRuntimeConfigCopyWith<$Res>  {
   factory $PrivRuntimeConfigCopyWith(PrivRuntimeConfig value, $Res Function(PrivRuntimeConfig) _then) = _$PrivRuntimeConfigCopyWithImpl;
 @useResult
 $Res call({
- int followDeathDelayMillis, bool activeReconnectOnOwnerDeath
+ int followDeathDelayMillis, bool activeReconnectOnOwnerDeath, String? crashLogDirectory
 });
 
 
@@ -68,11 +70,12 @@ class _$PrivRuntimeConfigCopyWithImpl<$Res>
 
 /// Create a copy of PrivRuntimeConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? followDeathDelayMillis = null,Object? activeReconnectOnOwnerDeath = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? followDeathDelayMillis = null,Object? activeReconnectOnOwnerDeath = null,Object? crashLogDirectory = freezed,}) {
   return _then(PrivRuntimeConfig(
 followDeathDelayMillis: null == followDeathDelayMillis ? _self.followDeathDelayMillis : followDeathDelayMillis // ignore: cast_nullable_to_non_nullable
 as int,activeReconnectOnOwnerDeath: null == activeReconnectOnOwnerDeath ? _self.activeReconnectOnOwnerDeath : activeReconnectOnOwnerDeath // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,crashLogDirectory: freezed == crashLogDirectory ? _self.crashLogDirectory : crashLogDirectory // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -157,10 +160,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath,  String? crashLogDirectory)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PrivRuntimeConfig() when $default != null:
-return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);case _:
+return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath,_that.crashLogDirectory);case _:
   return orElse();
 
 }
@@ -178,10 +181,10 @@ return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath,  String? crashLogDirectory)  $default,) {final _that = this;
 switch (_that) {
 case _PrivRuntimeConfig():
-return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);case _:
+return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath,_that.crashLogDirectory);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +201,10 @@ return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int followDeathDelayMillis,  bool activeReconnectOnOwnerDeath,  String? crashLogDirectory)?  $default,) {final _that = this;
 switch (_that) {
 case _PrivRuntimeConfig() when $default != null:
-return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);case _:
+return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath,_that.crashLogDirectory);case _:
   return null;
 
 }
@@ -213,11 +216,14 @@ return $default(_that.followDeathDelayMillis,_that.activeReconnectOnOwnerDeath);
 
 
 class _PrivRuntimeConfig extends PrivRuntimeConfig {
-  const _PrivRuntimeConfig({required this.followDeathDelayMillis, required this.activeReconnectOnOwnerDeath}): super._();
+  const _PrivRuntimeConfig({required this.followDeathDelayMillis, required this.activeReconnectOnOwnerDeath, this.crashLogDirectory}): super._();
   
 
 @override final  int followDeathDelayMillis;
 @override final  bool activeReconnectOnOwnerDeath;
+/// Absolute directory the server writes crash reports to, or `null` when
+/// only `/data/local/tmp` is used.
+@override final  String? crashLogDirectory;
 
 /// Create a copy of PrivRuntimeConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -229,18 +235,18 @@ _$PrivRuntimeConfigCopyWith<_PrivRuntimeConfig> get copyWith => __$PrivRuntimeCo
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PrivRuntimeConfig&&(identical(other.followDeathDelayMillis, followDeathDelayMillis) || other.followDeathDelayMillis == followDeathDelayMillis)&&(identical(other.activeReconnectOnOwnerDeath, activeReconnectOnOwnerDeath) || other.activeReconnectOnOwnerDeath == activeReconnectOnOwnerDeath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PrivRuntimeConfig&&(identical(other.followDeathDelayMillis, followDeathDelayMillis) || other.followDeathDelayMillis == followDeathDelayMillis)&&(identical(other.activeReconnectOnOwnerDeath, activeReconnectOnOwnerDeath) || other.activeReconnectOnOwnerDeath == activeReconnectOnOwnerDeath)&&(identical(other.crashLogDirectory, crashLogDirectory) || other.crashLogDirectory == crashLogDirectory));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,followDeathDelayMillis,activeReconnectOnOwnerDeath);
+    return Object.hash(runtimeType,followDeathDelayMillis,activeReconnectOnOwnerDeath,crashLogDirectory);
 }
 
 @override
 String toString() {
-    return 'PrivRuntimeConfig(followDeathDelayMillis: $followDeathDelayMillis, activeReconnectOnOwnerDeath: $activeReconnectOnOwnerDeath)';
+    return 'PrivRuntimeConfig(followDeathDelayMillis: $followDeathDelayMillis, activeReconnectOnOwnerDeath: $activeReconnectOnOwnerDeath, crashLogDirectory: $crashLogDirectory)';
 }
 
 
@@ -251,7 +257,7 @@ abstract mixin class _$PrivRuntimeConfigCopyWith<$Res> implements $PrivRuntimeCo
   factory _$PrivRuntimeConfigCopyWith(_PrivRuntimeConfig value, $Res Function(_PrivRuntimeConfig) _then) = __$PrivRuntimeConfigCopyWithImpl;
 @override @useResult
 $Res call({
- int followDeathDelayMillis, bool activeReconnectOnOwnerDeath
+ int followDeathDelayMillis, bool activeReconnectOnOwnerDeath, String? crashLogDirectory
 });
 
 
@@ -268,11 +274,12 @@ class __$PrivRuntimeConfigCopyWithImpl<$Res>
 
 /// Create a copy of PrivRuntimeConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? followDeathDelayMillis = null,Object? activeReconnectOnOwnerDeath = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? followDeathDelayMillis = null,Object? activeReconnectOnOwnerDeath = null,Object? crashLogDirectory = freezed,}) {
   return _then(_PrivRuntimeConfig(
 followDeathDelayMillis: null == followDeathDelayMillis ? _self.followDeathDelayMillis : followDeathDelayMillis // ignore: cast_nullable_to_non_nullable
 as int,activeReconnectOnOwnerDeath: null == activeReconnectOnOwnerDeath ? _self.activeReconnectOnOwnerDeath : activeReconnectOnOwnerDeath // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,crashLogDirectory: freezed == crashLogDirectory ? _self.crashLogDirectory : crashLogDirectory // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

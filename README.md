@@ -41,6 +41,7 @@ This plugin covers the parts of [`priv-core`][priv-core] that make sense to driv
 - **Command execution** — non-interactive processes with aggregated or
   streamed output.
 - **File proxy** — read, write and traverse paths your app itself cannot reach.
+- **Crash logs** — read the report a privileged process wrote when it died.
 - **UserService** — run your own Kotlin class with the server's privileges,
   with the lifecycle driven from Dart.
 - **Binder access** — resolve system services and the server's lifecycle
@@ -68,7 +69,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.2) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.4) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -455,6 +456,10 @@ await for (final entry in privKit.fileWalk('/data/local/tmp', maxDepth: 1)) {
 `skipDirectoryGlobs` prunes matching directory names. Cancelling the
 subscription stops the walk.
 
+Since priv-core 0.17.3 the root itself may be a symbolic link — `/sdcard`
+works — and its parent does not have to be listable, so `/storage/emulated/0`
+can be opened directly.
+
 `entry.metadata` is null when the server can enumerate a name but cannot read
 its attributes — such entries are emitted but never entered.
 
@@ -680,21 +685,61 @@ await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
 
 ## ⚙️ Runtime configuration
 
-Controls what the server does when the owner process dies:
+Controls what the server does when the owner process dies, and where it writes
+crash reports:
 
 ```dart
 final config = await privKit.getRuntimeConfig();
 print(config.followDeathDelay); // default: 10 minutes
+print(config.crashLogDirectory); // default: null, i.e. /data/local/tmp
 
 await privKit.configureRuntime(
   followDeathDelayMillis: 60000, // wait 1 minute for the owner to come back
   activeReconnectOnOwnerDeath: true,
+  crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
 );
 ```
 
 Omitted fields keep their current value. Changes are pushed to the connected
 server and apply to the **next** owner death — a reconnect flow that has
 already started keeps the values it captured when the owner died.
+
+Set `crashLogDirectory` during startup, before you start the server or read
+`getNativeStarterCommand()`: the directory travels to the privileged process in
+its launch command. Use one directory per app and Android user — for example
+the Kotlin-side `getExternalFilesDir("privilege-crashes")` — because reports
+written there are not tagged with an application id.
+
+## 💥 Crash logs
+
+When the Privileged Server or a dedicated UserService dies on an uncaught
+Java/Kotlin exception, it writes the report as UTF-8 JSON and this API reads it
+back:
+
+```dart
+final reports = await privKit.readCrashLogs(); // newest first
+for (final report in reports) {
+  print('${report.crashedAt} ${report.exceptionType}: '
+      '${report.exceptionMessage}');
+  print(report.stackTrace);
+}
+```
+
+`readCrashLogs()` scans the configured `crashLogDirectory` and the shared
+fallback `/data/local/tmp`, which is where reports land when no directory is
+configured. Everything goes through the file proxy, so **a server has to be
+connected**. Given that:
+
+- Only `priv-crash_*.json` files below 1 MiB are decoded, so half-written
+  temporary files and unrelated output are ignored.
+- `/data/local/tmp` is shared between apps and users, so check
+  `report.applicationId` and `report.userId` before showing anything.
+- Native crashes, `SIGKILL` and failures before launch configuration is parsed
+  produce no file at all: Logcat remains the diagnostic path there.
+- Nothing deletes these files. Remove them yourself with
+  [`fileDelete`](#-file-proxy) once you have read them.
+
+Docs: [Crash logs](https://priv-kit.pages.dev/guide/activation#crash-logs).
 
 ## 🔐 Server permissions
 

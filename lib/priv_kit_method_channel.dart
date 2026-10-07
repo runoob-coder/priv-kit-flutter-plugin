@@ -423,9 +423,11 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
+    String? crashLogDirectory,
   }) => methodChannel.invokeMethod<void>('configureRuntime', <String, Object?>{
     'followDeathDelayMillis': followDeathDelayMillis,
     'activeReconnectOnOwnerDeath': activeReconnectOnOwnerDeath,
+    'crashLogDirectory': crashLogDirectory,
   });
 
   @override

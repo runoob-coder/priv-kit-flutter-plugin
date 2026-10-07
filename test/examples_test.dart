@@ -219,6 +219,7 @@ class _FakePlatform extends PrivKitPlatform {
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
+    String? crashLogDirectory,
   }) async {}
 
   @override
@@ -540,10 +541,24 @@ void main() {
       config.followDeathDelayMillis,
       privilegeDefaultFollowDeathDelayMillis,
     );
+    expect(config.crashLogDirectory, isNull);
     await privKit.configureRuntime(
       followDeathDelayMillis: 60000,
       activeReconnectOnOwnerDeath: true,
+      crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
     );
+
+    // Crash logs written by privileged processes.
+    final reports = await privKit.readCrashLogs();
+    for (final report in reports) {
+      // ignore: avoid_print
+      print(
+        '${report.crashedAt} ${report.exceptionType}: '
+        '${report.exceptionMessage}',
+      );
+      // ignore: avoid_print
+      print(report.stackTrace);
+    }
 
     // Permissions.
     await privKit.getDeniedServerPermissions();

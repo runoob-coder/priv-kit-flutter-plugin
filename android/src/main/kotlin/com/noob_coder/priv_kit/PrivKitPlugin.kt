@@ -23,6 +23,7 @@ import priv.kit.core.adb.PrivilegeAdbConnectionOptions
 import priv.kit.core.PrivilegeExternalStartupBridgeOptions
 import priv.kit.core.PrivilegeExternalStartupOptions
 import priv.kit.core.PrivilegeStartupLogListener
+import java.io.File
 
 /**
  * Flutter bindings for the Priv Kit Android runtime.
@@ -201,6 +202,8 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         "followDeathDelayMillis" to PrivilegeConfig.followDeathDelayMillis,
                         "activeReconnectOnOwnerDeath" to
                             PrivilegeConfig.activeReconnectOnOwnerDeath,
+                        "crashLogDirectory" to
+                            PrivilegeConfig.crashLogDirectory?.absolutePath,
                     )
                 }
             }
@@ -210,6 +213,9 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     call.argument<Number>("followDeathDelayMillis")?.toLong()
                 val activeReconnectOnOwnerDeath =
                     call.argument<Boolean>("activeReconnectOnOwnerDeath")
+                // Null keeps the current value, matching the other fields: the
+                // directory is set once during initialization and rarely reset.
+                val crashLogDirectory = call.argument<String>("crashLogDirectory")
                 withContext(Dispatchers.IO) {
                     // Omitted fields keep their current value, so read them back
                     // before publishing the complete snapshot.
@@ -219,6 +225,10 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         activeReconnectOnOwnerDeath = activeReconnectOnOwnerDeath
                             ?: PrivilegeConfig.activeReconnectOnOwnerDeath,
                     )
+                    if (crashLogDirectory != null) {
+                        // Must be absolute: priv-core rejects a relative path.
+                        PrivilegeConfig.crashLogDirectory = File(crashLogDirectory)
+                    }
                 }
                 null
             }

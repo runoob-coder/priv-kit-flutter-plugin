@@ -121,6 +121,29 @@ class _MyAppState extends State<MyApp> {
     _log('deniedServerPermissions -> $denied');
   });
 
+  /// Reads the reports privileged processes wrote when they died.
+  ///
+  /// The directory itself is configured natively in `MainApp` before Flutter
+  /// starts, because it has to be set before any startup. The scan also covers
+  /// the shared `/data/local/tmp` fallback, which is why it needs a connected
+  /// server.
+  Future<void> _readCrashLogs() => _run(() async {
+    final reports = await _privKit.readCrashLogs();
+    if (reports.isEmpty) {
+      _log('崩溃日志：没有报告');
+      return;
+    }
+    _log('崩溃日志：${reports.length} 条（按时间倒序）');
+    for (final report in reports.take(5)) {
+      final head = report.stackTrace.split('\n').take(3).join('\n      ');
+      _log(
+        '  ${report.crashedAt} ${report.processType} pid=${report.pid}\n'
+        '    ${report.exceptionType}: ${report.exceptionMessage}\n'
+        '      $head',
+      );
+    }
+  });
+
   Future<void> _shutdown() => _run(() async {
     await _privKit.shutdownServer();
     _log('shutdownServer done');
@@ -467,6 +490,10 @@ class _MyAppState extends State<MyApp> {
                 OutlinedButton(
                   onPressed: _busy ? null : _loadDeniedPermissions,
                   child: const Text('被拒绝权限'),
+                ),
+                OutlinedButton(
+                  onPressed: _busy || server == null ? null : _readCrashLogs,
+                  child: const Text('崩溃日志'),
                 ),
                 OutlinedButton(
                   onPressed: _busy ? null : _shutdown,
