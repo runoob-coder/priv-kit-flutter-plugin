@@ -63,7 +63,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.4），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.6），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -221,6 +221,10 @@ final info = await privKit.startAdb();
 ```dart
 await privKit.adbPair(pairingCode: '123456', port: 5555);
 ```
+
+端口发现是被动的：自 priv-core 0.17.6 起，它在 Android 17 上不会再弹出系统的
+网络设备选择器，缺少本地网络权限时也不会失败，而是暂停等待，权限授予后继续。
+如果某个调用不能依赖发现过程，就显式传 `port`，或改用静态 TCP/IP 端口。
 
 ### TCP/IP 静态端口启动
 
@@ -668,11 +672,12 @@ await privKit.configureRuntime(
 省略的字段保持当前值。变更会推送到已连接的服务端，并作用于**下一次** owner
 死亡——已经启动的重连流程会沿用它在 owner 死亡时捕获的值。
 
-`crashLogDirectory` 应在启动阶段尽早设置，早于启动服务端或读取
-`getNativeStarterCommand()`：该目录通过进程的启动命令下发。请使用「一个 App +
-一个 Android 用户」独占的目录（例如 Kotlin 侧的
+`crashLogDirectory` 在初始化阶段设置一次即可，早于任何启动调用。请使用「一个
+App + 一个 Android 用户」独占的目录（例如 Kotlin 侧的
 `getExternalFilesDir("privilege-crashes")`），因为写在那里的报告不会带包名
-标记。
+标记。`startRoot`、`startAdb` 与外部启动会在启动命令里把该目录交给新进程；
+**手动启动不会**——自 priv-core 0.17.5 起打印出来的命令不再塞环境变量，这类
+服务端要到第一次 owner 握手才拿到目录，之前会写到 `/data/local/tmp`。
 
 ## 💥 崩溃日志
 
@@ -688,9 +693,9 @@ for (final report in reports) {
 }
 ```
 
-`readCrashLogs()` 会扫描已配置的 `crashLogDirectory`，以及未配置目录时报告
-实际落盘的共享兜底目录 `/data/local/tmp`。全部读取都走文件代理，因此**必须
-有已连接的服务端**。由此产生几点约束：
+`readCrashLogs()` 会扫描已配置的 `crashLogDirectory`，以及共享兜底目录
+`/data/local/tmp`——后者还会收到「目录下发之前」写下的报告。全部读取都走文件
+代理，因此**必须有已连接的服务端**。由此产生几点约束：
 
 - 只解码 1 MiB 以内的 `priv-crash_*.json`，写了一半的临时文件与无关文件会被
   忽略。

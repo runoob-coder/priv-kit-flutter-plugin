@@ -1,3 +1,12 @@
+## 0.0.11
+
+### Upgrade priv-core 0.17.4 → 0.17.6
+
+A manually started server now learns its crash log directory at the handshake,
+so its earliest reports land in `/data/local/tmp` — which `readCrashLogs()`
+already scans. Wireless port discovery no longer opens the Android 17 network
+picker and waits instead of failing without the local network permission.
+
 ## 0.0.10
 
 ### Upgrade priv-core 0.17.2 → 0.17.4

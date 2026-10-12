@@ -69,7 +69,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.4) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.6) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -233,6 +233,12 @@ A host that already discovered the port can make the endpoint explicit:
 ```dart
 await privKit.adbPair(pairingCode: '123456', port: 5555);
 ```
+
+Discovery is passive: since priv-core 0.17.6 it never opens the system network
+device picker on Android 17, and it pauses instead of failing while the local
+network permission is missing, resuming once the permission is granted. Pass a
+`port` or use the static TCP/IP port when you need a call that does not depend
+on that discovery.
 
 ### ADB static TCP/IP port
 
@@ -704,11 +710,14 @@ Omitted fields keep their current value. Changes are pushed to the connected
 server and apply to the **next** owner death — a reconnect flow that has
 already started keeps the values it captured when the owner died.
 
-Set `crashLogDirectory` during startup, before you start the server or read
-`getNativeStarterCommand()`: the directory travels to the privileged process in
-its launch command. Use one directory per app and Android user — for example
-the Kotlin-side `getExternalFilesDir("privilege-crashes")` — because reports
-written there are not tagged with an application id.
+Set `crashLogDirectory` once during startup, before any startup call. Use one
+directory per app and Android user — for example the Kotlin-side
+`getExternalFilesDir("privilege-crashes")` — because reports written there are
+not tagged with an application id. `startRoot`, `startAdb` and the external
+startup calls pass it to the new process in its launch command; **manual
+startup does not**, since priv-core 0.17.5 keeps the printed command clean —
+such a server learns the directory at its first owner handshake and writes to
+`/data/local/tmp` before that.
 
 ## 💥 Crash logs
 
@@ -726,9 +735,9 @@ for (final report in reports) {
 ```
 
 `readCrashLogs()` scans the configured `crashLogDirectory` and the shared
-fallback `/data/local/tmp`, which is where reports land when no directory is
-configured. Everything goes through the file proxy, so **a server has to be
-connected**. Given that:
+fallback `/data/local/tmp`, which also catches reports written before the
+directory reached the server. Everything goes through the file proxy, so **a
+server has to be connected**. Given that:
 
 - Only `priv-crash_*.json` files below 1 MiB are decoded, so half-written
   temporary files and unrelated output are ignored.

@@ -22,9 +22,9 @@ class MainApp : Application() {
     override fun onCreate() {
         super.onCreate()
         // Where the server and every dedicated UserService write their own
-        // crash reports. The directory travels to the privileged process in
-        // the native startup command, so it has to be set before any startup
-        // — including the manual command the demo prints.
+        // crash reports. Set it once before any startup: the start calls managed
+        // by priv-core hand the directory to the new process, while a manually
+        // started server learns it at its owner handshake.
         //
         // This directory belongs to one app and Android user, which is what
         // PrivilegeConfig requires. When storage is unavailable the result is

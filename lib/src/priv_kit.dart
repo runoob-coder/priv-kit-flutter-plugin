@@ -501,9 +501,14 @@ class PrivKit {
   ///
   /// [crashLogDirectory] must be absolute and cover only this app and Android
   /// user, for example the value of `getExternalFilesDir("privilege-crashes")`.
-  /// Set it as early as possible: it reaches the server through the native
-  /// startup command, so a process started afterwards still writes to the
-  /// previous location. `null` keeps the directory unchanged.
+  /// Set it once during application initialization, before any startup. `null`
+  /// keeps the directory unchanged.
+  ///
+  /// [startRoot], [startAdb] and the two `externalStartupRun*` calls hand it to
+  /// the new process in its launch command, so those report crashes from their
+  /// very first lines. Manual startup does not: the command printed by
+  /// [getNativeStarterCommand] omits the directory, and such a server writes to
+  /// `/data/local/tmp` until the owner handshake delivers it.
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
@@ -520,8 +525,10 @@ class PrivKit {
   ///
   /// Scans [directory], defaulting to the [PrivRuntimeConfig.crashLogDirectory]
   /// reported by [getRuntimeConfig], and — unless [includeFallbackDirectory] is
-  /// false — also [privilegeCrashLogFallbackDirectory], where reports land when
-  /// no directory is configured. Reports are sorted newest first.
+  /// false — also [privilegeCrashLogFallbackDirectory]. Both always matter: the
+  /// fallback takes every report written before the directory was configured or
+  /// before a manually started server completed its owner handshake. Reports are
+  /// sorted newest first.
   ///
   /// Every scan runs through the file proxy, so a Privileged Server has to be
   /// connected; an ordinary app cannot list the shared fallback directory. The
@@ -570,6 +577,10 @@ class PrivKit {
   ///
   /// Prefix it with `adb shell ` when showing it to a development machine.
   /// The starter only runs as root (0), system (1000) or shell (2000).
+  ///
+  /// The command deliberately carries no launch configuration: a server started
+  /// manually picks [PrivRuntimeConfig.crashLogDirectory] up at its first owner
+  /// handshake, so it reports early crashes to `/data/local/tmp`.
   Future<String> getNativeStarterCommand() =>
       _guard(_platform.getNativeStarterCommand);
 
