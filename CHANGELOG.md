@@ -1,3 +1,13 @@
+## 0.0.12
+
+### Upgrade priv-core 0.17.6 → 0.17.8
+
+ADB identity, pairing and TCP session failures now report one
+`PrivilegeStartupException` message instead of passing the original error
+through. The native starter ignores unrelated processes with an empty
+`cmdline`/`comm`, and reports an interrupted APK directory scan instead of using
+the partial result.
+
 ## 0.0.11
 
 ### Upgrade priv-core 0.17.4 → 0.17.6
