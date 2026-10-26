@@ -1,0 +1,305 @@
+{
+  "@@locale": "en",
+  "appTitle": "Priv Kit example",
+  "@appTitle": {
+    "description": "Title shown in the app bar."
+  },
+  "serverNotConnectedHint": "Commands require a connected Privileged Server",
+  "@serverNotConnectedHint": {
+    "description": "Hint shown when no server is connected."
+  },
+  "logsTitle": "Logs",
+  "@logsTitle": {
+    "description": "Section title for the log output."
+  },
+  "logsEmpty": "No logs yet",
+  "@logsEmpty": {
+    "description": "Shown in the log dialog when there are no entries."
+  },
+  "logsClear": "Clear",
+  "@logsClear": {
+    "description": "Button in the log dialog to clear all logs."
+  },
+  "logsClose": "Close",
+  "@logsClose": {
+    "description": "Button to close the log dialog."
+  },
+  "serverCardTitle": "Privileged Server",
+  "@serverCardTitle": {
+    "description": "Title of the server status card."
+  },
+  "serverDisconnected": "Disconnected",
+  "@serverDisconnected": {
+    "description": "Shown when the server is not connected."
+  },
+  "serverConnected": "Connected (root={root})",
+  "@serverConnected": {
+    "description": "Shown when the server is connected.",
+    "placeholders": {
+      "root": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUidLine": "uid={uid} pid={pid} protocol={protocol}",
+  "@serverUidLine": {
+    "description": "Server identity line.",
+    "placeholders": {
+      "uid": {
+        "type": "int"
+      },
+      "pid": {
+        "type": "int"
+      },
+      "protocol": {
+        "type": "int"
+      }
+    }
+  },
+  "serverSelinux": "selinux={context}",
+  "@serverSelinux": {
+    "description": "SELinux context line.",
+    "placeholders": {
+      "context": {
+        "type": "String"
+      }
+    }
+  },
+  "actionRoot": "Start as Root",
+  "@actionRoot": {
+    "description": "Button: start the server as root."
+  },
+  "actionAdb": "Start Wireless Debugging",
+  "@actionAdb": {
+    "description": "Button: start over wireless debugging."
+  },
+  "actionAdbTcp": "Start over TCP/IP",
+  "@actionAdbTcp": {
+    "description": "Button: start over TCP/IP."
+  },
+  "actionCheckPairing": "Check Pairing",
+  "@actionCheckPairing": {
+    "description": "Button: check ADB pairing."
+  },
+  "actionNativeStarter": "Manual Start Command",
+  "@actionNativeStarter": {
+    "description": "Button: fetch the manual starter command."
+  },
+  "actionDeniedPerms": "Denied Permissions",
+  "@actionDeniedPerms": {
+    "description": "Button: list denied permissions."
+  },
+  "actionCrashLogs": "Crash Logs",
+  "@actionCrashLogs": {
+    "description": "Button: read crash logs."
+  },
+  "actionShutdown": "Shutdown Server",
+  "@actionShutdown": {
+    "description": "Button: shut down the server."
+  },
+  "actionRunId": "Run id (aggregated)",
+  "@actionRunId": {
+    "description": "Button: run id and aggregate output."
+  },
+  "actionStreamCount": "Run Command (streaming)",
+  "@actionStreamCount": {
+    "description": "Button: run command and stream output."
+  },
+  "actionCancelCommand": "Cancel Command",
+  "@actionCancelCommand": {
+    "description": "Button: cancel the running command."
+  },
+  "cmdPanelTitle": "Run Command Manually",
+  "@cmdPanelTitle": {
+    "description": "Title of the command panel."
+  },
+  "cmdPanelFooter": "No stdin or PTY: interactive programs, terminal signals and ANSI rendering are unsupported.",
+  "@cmdPanelFooter": {
+    "description": "Footer note of the command panel."
+  },
+  "fieldCommand": "Command",
+  "@fieldCommand": {
+    "description": "Label for the command field."
+  },
+  "placeholderCommand": "id -u",
+  "@placeholderCommand": {
+    "description": "Placeholder for the command field."
+  },
+  "switchUseShell": "Execute via shell",
+  "@switchUseShell": {
+    "description": "Title of the use-shell switch."
+  },
+  "switchUseShellSub": "The command API does not add a shell implicitly",
+  "@switchUseShellSub": {
+    "description": "Subtitle of the use-shell switch."
+  },
+  "fieldWorkDir": "Working directory (optional, absolute path)",
+  "@fieldWorkDir": {
+    "description": "Label for the working directory field."
+  },
+  "placeholderWorkDir": "/data/local/tmp",
+  "@placeholderWorkDir": {
+    "description": "Placeholder for the working directory field."
+  },
+  "fieldEnv": "Environment (optional, one KEY=VALUE per line)",
+  "@fieldEnv": {
+    "description": "Label for the environment field."
+  },
+  "placeholderEnv": "LANG=C",
+  "@placeholderEnv": {
+    "description": "Placeholder for the environment field."
+  },
+  "fieldTimeout": "Timeout (ms)",
+  "@fieldTimeout": {
+    "description": "Label for the timeout field."
+  },
+  "placeholderTimeout": "Leave blank for 30000",
+  "@placeholderTimeout": {
+    "description": "Placeholder for the timeout field."
+  },
+  "checkDisableTimeout": "Disable timeout",
+  "@checkDisableTimeout": {
+    "description": "Title of the disable-timeout checkbox."
+  },
+  "errEmptyCommand": "Please enter a command",
+  "@errEmptyCommand": {
+    "description": "Error when the command field is empty."
+  },
+  "errEmptyExecutable": "Please enter an executable",
+  "@errEmptyExecutable": {
+    "description": "Error when no executable is parsed."
+  },
+  "errTimeoutPositive": "Timeout must be a positive integer in milliseconds",
+  "@errTimeoutPositive": {
+    "description": "Error when the timeout is not a positive integer."
+  },
+  "envFormat": "Environment must be KEY=VALUE: {line}",
+  "@envFormat": {
+    "description": "Error when an environment line is malformed.",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "btnRunAggregate": "Run and aggregate output",
+  "@btnRunAggregate": {
+    "description": "Button: run and aggregate output."
+  },
+  "btnStream": "Stream output",
+  "@btnStream": {
+    "description": "Button: stream output."
+  },
+  "btnStopStream": "Stop streaming command",
+  "@btnStopStream": {
+    "description": "Button: stop the streaming command."
+  },
+  "userServiceTitle": "UserService",
+  "@userServiceTitle": {
+    "description": "Title of the UserService panel."
+  },
+  "userServiceDesc": "DemoPrivilegeService is an AIDL service written by the app, running in the privileged process. The plugin controls start/stop from Dart; calling custom methods must go through the app's own Kotlin channel (see DemoUserServiceBridge).",
+  "@userServiceDesc": {
+    "description": "Description of the UserService panel."
+  },
+  "switchEmbedded": "Embedded",
+  "@switchEmbedded": {
+    "description": "Title of the embedded switch."
+  },
+  "switchEmbeddedSub": "When on, the service runs inside the Privileged Server process",
+  "@switchEmbeddedSub": {
+    "description": "Subtitle of the embedded switch."
+  },
+  "btnStart": "Start",
+  "@btnStart": {
+    "description": "Button: start the service."
+  },
+  "btnBind": "Bind (get handle)",
+  "@btnBind": {
+    "description": "Button: bind the service."
+  },
+  "btnCallAidl": "Call AIDL methods",
+  "@btnCallAidl": {
+    "description": "Button: call AIDL methods."
+  },
+  "btnStop": "Stop",
+  "@btnStop": {
+    "description": "Button: stop the service."
+  },
+  "binderTitle": "Binder",
+  "@binderTitle": {
+    "description": "Title of the Binder panel."
+  },
+  "binderDesc": "Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge).",
+  "@binderDesc": {
+    "description": "Description of the Binder panel."
+  },
+  "fieldServiceName": "System service name",
+  "@fieldServiceName": {
+    "description": "Label for the system service name field."
+  },
+  "placeholderServiceName": "activity",
+  "@placeholderServiceName": {
+    "description": "Placeholder for the system service name field."
+  },
+  "switchServerProcess": "Look up from server process",
+  "@switchServerProcess": {
+    "description": "Title of the server-process switch."
+  },
+  "switchServerProcessSub": "Some services are only visible to shell / root",
+  "@switchServerProcessSub": {
+    "description": "Subtitle of the server-process switch."
+  },
+  "fieldDumpArgs": "DUMP args (optional, space separated)",
+  "@fieldDumpArgs": {
+    "description": "Label for the DUMP args field."
+  },
+  "btnProbe": "Probe service (handle)",
+  "@btnProbe": {
+    "description": "Button: probe service by handle."
+  },
+  "btnDump": "DUMP (Kotlin side)",
+  "@btnDump": {
+    "description": "Button: run DUMP on the Kotlin side."
+  },
+  "btnLifecycle": "Server lifecycle Binder",
+  "@btnLifecycle": {
+    "description": "Button: server lifecycle Binder."
+  },
+  "filePanelTitle": "File Proxy",
+  "@filePanelTitle": {
+    "description": "Title of the File panel."
+  },
+  "filePanelFooter": "File operations run inside the server process, so they can read and write paths the app itself cannot access. Deleting a directory recurses automatically.",
+  "@filePanelFooter": {
+    "description": "Footer of the File panel."
+  },
+  "fieldPath": "Absolute path",
+  "@fieldPath": {
+    "description": "Label for the absolute path field."
+  },
+  "errPathAbsolute": "Path must be absolute",
+  "@errPathAbsolute": {
+    "description": "Error when the path is not absolute."
+  },
+  "btnInspect": "Inspect",
+  "@btnInspect": {
+    "description": "Button: inspect a file."
+  },
+  "btnWrite": "Write",
+  "@btnWrite": {
+    "description": "Button: write a file."
+  },
+  "btnRead": "Read",
+  "@btnRead": {
+    "description": "Button: read a file."
+  },
+  "btnList": "List one level",
+  "@btnList": {
+    "description": "Button: list one directory level."
+  },
+  "btnDelete": "Delete",
+  "@btnDelete": {
+    "description": "Button: delete a file or directory."
+  }
+}

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'l10n/gen_l10n/app_localizations.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:priv_kit/priv_kit.dart';
 
@@ -10,7 +12,10 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.locale});
+
+  /// Optional pinned locale (used for testing); `null` follows the system.
+  final Locale? locale;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -29,9 +34,43 @@ class _MyAppState extends State<MyApp> {
   bool _busy = false;
   bool _streaming = false;
 
+  /// `null` follows the system locale; otherwise it pins the app to EN/ZH.
+  Locale? _locale;
+
+  void _toggleLocale(String currentLang) {
+    setState(() {
+      _locale =
+          currentLang == 'zh' ? const Locale('en') : const Locale('zh');
+    });
+  }
+
+  void _clearLogs() {
+    if (!mounted) return;
+    setState(() => _logs.clear());
+  }
+
+  /// Opens a modal dialog that shows the accumulated logs and lets the user
+  /// clear them. The dialog snapshots the current entries, so it reflects the
+  /// cleared state immediately without needing the page to rebuild.
+  void _showLogs(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _LogsDialog(
+        logs: _logs,
+        onClear: _clearLogs,
+        title: l10n.logsTitle,
+        emptyText: l10n.logsEmpty,
+        clearText: l10n.logsClear,
+        closeText: l10n.logsClose,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _locale = widget.locale;
     _subscribe();
   }
 
@@ -130,10 +169,10 @@ class _MyAppState extends State<MyApp> {
   Future<void> _readCrashLogs() => _run(() async {
     final reports = await _privKit.readCrashLogs();
     if (reports.isEmpty) {
-      _log('崩溃日志：没有报告');
+      _log('Crash logs: no reports');
       return;
     }
-    _log('崩溃日志：${reports.length} 条（按时间倒序）');
+    _log('Crash logs: ${reports.length} entries (newest first)');
     for (final report in reports.take(5)) {
       final head = report.stackTrace.split('\n').take(3).join('\n      ');
       _log(
@@ -210,7 +249,6 @@ class _MyAppState extends State<MyApp> {
     _log('command cancelled');
   }
 
-  /// Runs the command typed into the panel and prints its captured output.
   Future<void> _runInput(_CommandRequest request) => _run(() async {
     final result = await _privKit.runCommand(
       request.command,
@@ -223,7 +261,6 @@ class _MyAppState extends State<MyApp> {
     );
   });
 
-  /// Streams the command typed into the panel.
   Future<void> _streamInput(_CommandRequest request) => _run(
     () =>
         _listenToCommand(request.command, timeoutMillis: request.timeoutMillis),
@@ -239,7 +276,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _fileInspect(String path) => _run(() async {
     if (!await _privKit.fileExists(path)) {
-      _log('$path 不存在');
+      _log('$path does not exist');
       return;
     }
     final metadata = await _privKit.fileMetadata(path);
@@ -265,13 +302,13 @@ class _MyAppState extends State<MyApp> {
       ),
       syncOnClose: true,
     );
-    _log('已写入 $path (${await _privKit.fileLength(path)} bytes)');
+    _log('Wrote $path (${await _privKit.fileLength(path)} bytes)');
   });
 
   /// Reads the whole file. [PrivKit.fileReadAllBytes] opens, drains and closes.
   Future<void> _fileReadSample(String path) => _run(() async {
     final bytes = await _privKit.fileReadAllBytes(path);
-    _log('读取 $path -> ${bytes.length} bytes\n${_decode(bytes)}');
+    _log('Read $path -> ${bytes.length} bytes\n${_decode(bytes)}');
   });
 
   /// Lists one level. `maxDepth: 1` is a non-recursive listing; drop it to
@@ -282,15 +319,15 @@ class _MyAppState extends State<MyApp> {
       entries.add(entry);
     }
     if (entries.isEmpty) {
-      _log('$path 下没有条目');
+      _log('No entries under $path');
       return;
     }
-    _log('$path 下 ${entries.length} 个条目：');
+    _log('${entries.length} entries under $path:');
     for (final entry in entries.take(20)) {
       final size = entry.metadata?.sizeBytes;
       _log(
         '  ${'  ' * (entry.depth - 1)}${entry.name}'
-        '${size == null ? ' (metadata 不可读)' : ' $size bytes'}',
+        '${size == null ? ' (metadata unreadable)' : ' $size bytes'}',
       );
     }
   });
@@ -298,9 +335,9 @@ class _MyAppState extends State<MyApp> {
   Future<void> _fileDeleteSample(String path) => _run(() async {
     if (await _privKit.fileIsDirectory(path)) {
       final deleted = await _privKit.fileDeleteRecursively(path);
-      _log('递归删除 $path -> $deleted');
+      _log('Recursive delete $path -> $deleted');
     } else {
-      _log('删除 $path -> ${await _privKit.fileDelete(path)}');
+      _log('Delete $path -> ${await _privKit.fileDelete(path)}');
     }
   });
 
@@ -323,7 +360,6 @@ class _MyAppState extends State<MyApp> {
     embedded: embedded,
   );
 
-  /// Lifecycle is driven through the plugin: start, then stop.
   Future<void> _startUserService(bool embedded) => _run(() async {
     final spec = _userServiceSpec(embedded);
     await _privKit.startUserService(spec);
@@ -334,8 +370,8 @@ class _MyAppState extends State<MyApp> {
   Future<void> _bindUserService(bool embedded) => _run(() async {
     final handle = await _privKit.bindUserService(_userServiceSpec(embedded));
     _log(
-      'bindUserService -> handle=$handle（Binder 无法传给 Dart，'
-      '调用请见下面的示例）',
+      'bindUserService -> handle=$handle (Binder cannot cross to Dart; '
+      'see the example below)',
     );
     await _privKit.unbindUserService(handle);
     _log('unbindUserService -> handle=$handle');
@@ -390,7 +426,7 @@ class _MyAppState extends State<MyApp> {
       source: source,
     );
     if (handle == null) {
-      _log('binderFromSystemService -> null（服务不可用）');
+      _log('binderFromSystemService -> null (service unavailable)');
       return;
     }
     try {
@@ -434,7 +470,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _binderLifecycle() => _run(() async {
     final handle = await _privKit.binderServerLifecycle();
     if (handle == null) {
-      _log('binderServerLifecycle -> null（未连接服务端）');
+      _log('binderServerLifecycle -> null (server not connected)');
       return;
     }
     try {
@@ -455,115 +491,162 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     final server = _server;
     return MaterialApp(
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
-      home: Scaffold(
-        appBar: AppBar(title: const Text('Priv Kit example')),
-        body: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _ServerCard(server: server),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton(
-                  onPressed: _busy ? null : _startRoot,
-                  child: const Text('Root 启动'),
-                ),
-                FilledButton(
-                  onPressed: _busy ? null : _startAdb,
-                  child: const Text('无线调试启动'),
-                ),
-                FilledButton(
-                  onPressed: _busy ? null : _startAdbTcp,
-                  child: const Text('TCP/IP 启动'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : _checkPairing,
-                  child: const Text('检查配对'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : _loadNativeStarterCommand,
-                  child: const Text('手动启动命令'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : _loadDeniedPermissions,
-                  child: const Text('被拒绝权限'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy || server == null ? null : _readCrashLogs,
-                  child: const Text('崩溃日志'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : _shutdown,
-                  child: const Text('关闭服务端'),
-                ),
-                FilledButton.tonal(
-                  onPressed: _busy || server == null ? null : _runId,
-                  child: const Text('执行 id（汇总）'),
-                ),
-                FilledButton.tonal(
-                  onPressed: _busy || server == null ? null : _streamCount,
-                  child: const Text('执行命令（流式）'),
-                ),
-                OutlinedButton(
-                  onPressed: _cancelCommand,
-                  child: const Text('取消命令'),
-                ),
-              ],
-            ),
-            if (server == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('命令执行需要先连接 Privileged Server'),
+      title: 'Priv Kit',
+      locale: _locale,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+      ),
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      // `AppLocalizations` is only resolvable inside MaterialApp's
+      // Localizations scope, so read it from a Builder context.
+      home: Builder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context)!;
+          final currentLang = Localizations.localeOf(context).languageCode;
+          return Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.appTitle),
+          actions: [
+            IconButton(
+              onPressed: () => _showLogs(context),
+              tooltip: l10n.logsTitle,
+              icon: Badge(
+                isLabelVisible: _logs.isNotEmpty,
+                label: Text('${_logs.length}'),
+                child: const Icon(Icons.list_alt),
               ),
-            const SizedBox(height: 12),
-            _CommandPanel(
-              enabled: server != null && !_busy,
-              streaming: _streaming,
-              onRun: _runInput,
-              onStream: _streamInput,
-              onCancel: _cancelCommand,
             ),
-            if (_nativeStarterCommand != null) ...[
-              const SizedBox(height: 12),
-              SelectableText('adb shell ${_nativeStarterCommand!}'),
-            ],
-            const SizedBox(height: 12),
-            _FilePanel(
-              enabled: server != null && !_busy,
-              onInspect: _fileInspect,
-              onWrite: _fileWriteSample,
-              onRead: _fileReadSample,
-              onList: _fileListSample,
-              onDelete: _fileDeleteSample,
-            ),
-            const SizedBox(height: 12),
-            _UserServicePanel(
-              enabled: server != null && !_busy,
-              onStart: _startUserService,
-              onBind: _bindUserService,
-              onCall: _callDemoUserService,
-              onStop: _stopUserService,
-            ),
-            const SizedBox(height: 12),
-            _BinderPanel(
-              enabled: server != null && !_busy,
-              onProbe: _probeBinder,
-              onDump: _dumpBinder,
-              onLifecycle: _binderLifecycle,
-            ),
-            const SizedBox(height: 16),
-            Text('日志', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            for (final line in _logs.take(40))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(line, style: const TextStyle(fontSize: 12)),
+            IconButton(
+              onPressed: () => _toggleLocale(currentLang),
+              tooltip: 'Switch language / 切换语言',
+              icon: Text(
+                currentLang == 'zh' ? 'EN' : '中',
+                style: const TextStyle(fontSize: 16),
               ),
+            ),
           ],
         ),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _ServerCard(server: server),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _button(
+                    label: l10n.actionRoot,
+                    style: .filled,
+                    onPressed: _busy ? null : _startRoot,
+                  ),
+                  _button(
+                    label: l10n.actionAdb,
+                    style: .filled,
+                    onPressed: _busy ? null : _startAdb,
+                  ),
+                  _button(
+                    label: l10n.actionAdbTcp,
+                    style: .filled,
+                    onPressed: _busy ? null : _startAdbTcp,
+                  ),
+                  _button(
+                    label: l10n.actionCheckPairing,
+                    onPressed: _busy ? null : _checkPairing,
+                  ),
+                  _button(
+                    label: l10n.actionNativeStarter,
+                    onPressed: _busy ? null : _loadNativeStarterCommand,
+                  ),
+                  _button(
+                    label: l10n.actionDeniedPerms,
+                    onPressed: _busy ? null : _loadDeniedPermissions,
+                  ),
+                  _button(
+                    label: l10n.actionCrashLogs,
+                    onPressed: _busy || server == null ? null : _readCrashLogs,
+                  ),
+                  _button(
+                    label: l10n.actionShutdown,
+                    onPressed: _busy ? null : _shutdown,
+                  ),
+                  _button(
+                    label: l10n.actionRunId,
+                    style: .tinted,
+                    onPressed: _busy || server == null ? null : _runId,
+                  ),
+                  _button(
+                    label: l10n.actionStreamCount,
+                    style: .tinted,
+                    onPressed: _busy || server == null ? null : _streamCount,
+                  ),
+                  _button(
+                    label: l10n.actionCancelCommand,
+                    onPressed: _cancelCommand,
+                  ),
+                ],
+              ),
+              if (server == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    l10n.serverNotConnectedHint,
+                    style: _captionStyle(context),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              _CommandPanel(
+                enabled: server != null && !_busy,
+                streaming: _streaming,
+                onRun: _runInput,
+                onStream: _streamInput,
+                onCancel: _cancelCommand,
+              ),
+              if (_nativeStarterCommand != null) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: SelectableText(
+                    'adb shell $_nativeStarterCommand',
+                    style: _captionStyle(context),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              _FilePanel(
+                enabled: server != null && !_busy,
+                onInspect: _fileInspect,
+                onWrite: _fileWriteSample,
+                onRead: _fileReadSample,
+                onList: _fileListSample,
+                onDelete: _fileDeleteSample,
+              ),
+              const SizedBox(height: 12),
+              _UserServicePanel(
+                enabled: server != null && !_busy,
+                onStart: _startUserService,
+                onBind: _bindUserService,
+                onCall: _callDemoUserService,
+                onStop: _stopUserService,
+              ),
+              const SizedBox(height: 12),
+              _BinderPanel(
+                enabled: server != null && !_busy,
+                onProbe: _probeBinder,
+                onDump: _dumpBinder,
+                onLifecycle: _binderLifecycle,
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      );
+        },
       ),
     );
   }
@@ -642,9 +725,10 @@ class _CommandPanelState extends State<_CommandPanel> {
   }
 
   _CommandRequest? _buildRequest() {
+    final l10n = AppLocalizations.of(context)!;
     final input = _command.text.trim();
     if (input.isEmpty) {
-      setState(() => _error = '请输入命令');
+      setState(() => _error = l10n.errEmptyCommand);
       return null;
     }
 
@@ -654,14 +738,14 @@ class _CommandPanelState extends State<_CommandPanel> {
     } else {
       arguments = _splitArgs(input);
       if (arguments.isEmpty) {
-        setState(() => _error = '请输入可执行文件');
+        setState(() => _error = l10n.errEmptyExecutable);
         return null;
       }
     }
 
     Map<String, String> environment;
     try {
-      environment = _parseEnvironment(_environment.text);
+      environment = _parseEnvironment(_environment.text, l10n);
     } on ArgumentError catch (e) {
       setState(() => _error = e.message as String?);
       return null;
@@ -675,7 +759,7 @@ class _CommandPanelState extends State<_CommandPanel> {
       if (text.isNotEmpty) {
         final value = int.tryParse(text);
         if (value == null || value <= 0) {
-          setState(() => _error = '超时必须是正整数毫秒');
+          setState(() => _error = l10n.errTimeoutPositive);
           return null;
         }
         timeoutMillis = value;
@@ -703,7 +787,7 @@ class _CommandPanelState extends State<_CommandPanel> {
 
   /// Minimal shell-like splitting: honours quotes and backslash escapes.
   ///
-  /// Only used when "通过 shell 执行" is off, because the command API passes
+  /// Only used when "Execute via shell" is off, because the command API passes
   /// arguments straight to the executable without a shell.
   static List<String> _splitArgs(String input) {
     final result = <String>[];
@@ -747,14 +831,17 @@ class _CommandPanelState extends State<_CommandPanel> {
   }
 
   /// Parses one `KEY=VALUE` entry per line.
-  static Map<String, String> _parseEnvironment(String text) {
+  static Map<String, String> _parseEnvironment(
+    String text,
+    AppLocalizations l10n,
+  ) {
     final map = <String, String>{};
     for (final raw in text.split('\n')) {
       final line = raw.trim();
       if (line.isEmpty) continue;
       final index = line.indexOf('=');
       if (index <= 0) {
-        throw ArgumentError('环境变量需写成 KEY=VALUE：$line');
+        throw ArgumentError(l10n.envFormat(line));
       }
       map[line.substring(0, index)] = line.substring(index + 1);
     }
@@ -763,124 +850,106 @@ class _CommandPanelState extends State<_CommandPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final enabled = widget.enabled;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('手动执行命令', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _command,
-              enabled: enabled,
-              maxLines: 3,
-              minLines: 2,
-              decoration: const InputDecoration(
-                labelText: '命令',
-                hintText: 'id -u',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('通过 shell 执行'),
-              subtitle: const Text('命令 API 不会隐式添加 shell'),
-              value: _useShell,
-              onChanged: enabled
-                  ? (value) => setState(() => _useShell = value)
-                  : null,
-            ),
-            TextField(
-              controller: _workingDirectory,
-              enabled: enabled,
-              decoration: const InputDecoration(
-                labelText: '工作目录（可选，需绝对路径）',
-                hintText: '/data/local/tmp',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _environment,
-              enabled: enabled,
-              maxLines: 2,
-              minLines: 1,
-              decoration: const InputDecoration(
-                labelText: '环境变量（可选，每行一个 KEY=VALUE）',
-                hintText: 'LANG=C',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _timeout,
-                    enabled: enabled && !_disableTimeout,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '超时（毫秒）',
-                      hintText: '留空为 30000',
-                      isDense: true,
-                    ),
-                  ),
+    return _PanelCard(
+      title: l10n.cmdPanelTitle,
+      footer: l10n.cmdPanelFooter,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          _field(
+            context,
+            label: l10n.fieldCommand,
+            controller: _command,
+            placeholder: l10n.placeholderCommand,
+            enabled: enabled,
+            maxLines: 3,
+            minLines: 2,
+          ),
+          const SizedBox(height: 12),
+          _switch(
+            context,
+            title: l10n.switchUseShell,
+            subtitle: l10n.switchUseShellSub,
+            value: _useShell,
+            onChanged: enabled
+                ? (value) => setState(() => _useShell = value)
+                : null,
+          ),
+          const SizedBox(height: 12),
+          _field(
+            context,
+            label: l10n.fieldWorkDir,
+            controller: _workingDirectory,
+            placeholder: l10n.placeholderWorkDir,
+            enabled: enabled,
+          ),
+          const SizedBox(height: 12),
+          _field(
+            context,
+            label: l10n.fieldEnv,
+            controller: _environment,
+            placeholder: l10n.placeholderEnv,
+            enabled: enabled,
+            maxLines: 2,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: .center,
+            children: [
+              Expanded(
+                child: _field(
+                  context,
+                  label: l10n.fieldTimeout,
+                  controller: _timeout,
+                  placeholder: l10n.placeholderTimeout,
+                  enabled: enabled && !_disableTimeout,
+                  keyboardType: TextInputType.number,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('禁用超时'),
-                    value: _disableTimeout,
-                    onChanged: enabled
-                        ? (value) =>
-                              setState(() => _disableTimeout = value ?? false)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 12,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _check(
+                  context,
+                  title: l10n.checkDisableTimeout,
+                  value: _disableTimeout,
+                  onChanged: enabled
+                      ? (value) =>
+                            setState(() => _disableTimeout = value ?? false)
+                      : null,
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(stream: false) : null,
-                  child: const Text('执行并汇总输出'),
-                ),
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(stream: true) : null,
-                  child: const Text('流式执行'),
-                ),
-                OutlinedButton(
-                  // Only meaningful while a stream is running; cancelling the
-                  // subscription is what terminates the remote process.
-                  onPressed: widget.streaming ? widget.onCancel : null,
-                  child: const Text('停止流式命令'),
-                ),
-              ],
-            ),
+          ),
+          if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(
-              '不提供 stdin 或 PTY：不支持交互式程序、终端信号与 ANSI 渲染。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(_error!, style: _errorStyle(context)),
           ],
-        ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _button(
+                label: l10n.btnRunAggregate,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(stream: false) : null,
+              ),
+              _button(
+                label: l10n.btnStream,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(stream: true) : null,
+              ),
+              _button(
+                // Only meaningful while a stream is running; cancelling the
+                // subscription is what terminates the remote process.
+                label: l10n.btnStopStream,
+                onPressed: widget.streaming ? widget.onCancel : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -914,54 +983,49 @@ class _UserServicePanelState extends State<_UserServicePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final enabled = widget.enabled;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('UserService', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
-            Text(
-              'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在特权进程。'
-              '插件的 start/stop 由 Dart 控制；调用自定义方法必须走 App 自己的'
-              ' Kotlin 通道（见 DemoUserServiceBridge）。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('嵌入式（embedded）'),
-              subtitle: const Text('开启后服务跑在 Privileged Server 进程内'),
-              value: _embedded,
-              onChanged: enabled
-                  ? (value) => setState(() => _embedded = value)
-                  : null,
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonal(
-                  onPressed: enabled ? () => widget.onStart(_embedded) : null,
-                  child: const Text('启动'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? () => widget.onBind(_embedded) : null,
-                  child: const Text('绑定（拿句柄）'),
-                ),
-                FilledButton.tonal(
-                  onPressed: enabled ? () => widget.onCall(_embedded) : null,
-                  child: const Text('调用 AIDL 方法'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? () => widget.onStop(_embedded) : null,
-                  child: const Text('停止'),
-                ),
-              ],
-            ),
-          ],
-        ),
+    return _PanelCard(
+      title: l10n.userServiceTitle,
+      description: l10n.userServiceDesc,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          _switch(
+            context,
+            title: l10n.switchEmbedded,
+            subtitle: l10n.switchEmbeddedSub,
+            value: _embedded,
+            onChanged: enabled
+                ? (value) => setState(() => _embedded = value)
+                : null,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _button(
+                label: l10n.btnStart,
+                style: .tinted,
+                onPressed: enabled ? () => widget.onStart(_embedded) : null,
+              ),
+              _button(
+                label: l10n.btnBind,
+                onPressed: enabled ? () => widget.onBind(_embedded) : null,
+              ),
+              _button(
+                label: l10n.btnCallAidl,
+                style: .tinted,
+                onPressed: enabled ? () => widget.onCall(_embedded) : null,
+              ),
+              _button(
+                label: l10n.btnStop,
+                onPressed: enabled ? () => widget.onStop(_embedded) : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1021,68 +1085,60 @@ class _BinderPanelState extends State<_BinderPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final enabled = widget.enabled;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Binder', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
-            Text(
-              'Binder 无法通过平台通道传递：Dart 只能拿到整型句柄，做存活与描述符'
-              '查询。真正的 transaction 必须在 Kotlin 侧发起，见 DemoBinderBridge。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _serviceName,
-              enabled: enabled,
-              decoration: const InputDecoration(
-                labelText: '系统服务名',
-                hintText: 'activity',
-                isDense: true,
+    return _PanelCard(
+      title: l10n.binderTitle,
+      description: l10n.binderDesc,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          _field(
+            context,
+            label: l10n.fieldServiceName,
+            controller: _serviceName,
+            placeholder: l10n.placeholderServiceName,
+            enabled: enabled,
+          ),
+          const SizedBox(height: 12),
+          _switch(
+            context,
+            title: l10n.switchServerProcess,
+            subtitle: l10n.switchServerProcessSub,
+            value: _serverProcess,
+            onChanged: enabled
+                ? (value) => setState(() => _serverProcess = value)
+                : null,
+          ),
+          const SizedBox(height: 12),
+          _field(
+            context,
+            label: l10n.fieldDumpArgs,
+            controller: _dumpArgs,
+            enabled: enabled,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _button(
+                label: l10n.btnProbe,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(dump: false) : null,
               ),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('从服务端进程查找'),
-              subtitle: const Text('部分服务只对 shell / root 可见'),
-              value: _serverProcess,
-              onChanged: enabled
-                  ? (value) => setState(() => _serverProcess = value)
-                  : null,
-            ),
-            TextField(
-              controller: _dumpArgs,
-              enabled: enabled,
-              decoration: const InputDecoration(
-                labelText: 'DUMP 参数（可选，空格分隔）',
-                isDense: true,
+              _button(
+                label: l10n.btnDump,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(dump: true) : null,
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(dump: false) : null,
-                  child: const Text('检查服务（句柄）'),
-                ),
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(dump: true) : null,
-                  child: const Text('DUMP（Kotlin 侧）'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? widget.onLifecycle : null,
-                  child: const Text('服务端生命周期 Binder'),
-                ),
-              ],
-            ),
-          ],
-        ),
+              _button(
+                label: l10n.btnLifecycle,
+                onPressed: enabled ? widget.onLifecycle : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1121,9 +1177,10 @@ class _FilePanelState extends State<_FilePanel> {
   }
 
   void _submit(Future<void> Function(String path) action) {
+    final l10n = AppLocalizations.of(context)!;
     final path = _path.text.trim();
     if (!path.startsWith('/')) {
-      setState(() => _error = '路径必须是绝对路径');
+      setState(() => _error = l10n.errPathAbsolute);
       return;
     }
     setState(() => _error = null);
@@ -1133,69 +1190,49 @@ class _FilePanelState extends State<_FilePanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final enabled = widget.enabled;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('文件代理', style: Theme.of(context).textTheme.titleSmall),
+    return _PanelCard(
+      title: l10n.filePanelTitle,
+      footer: l10n.filePanelFooter,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          _field(context, label: l10n.fieldPath, controller: _path, enabled: enabled),
+          if (_error != null) ...[
             const SizedBox(height: 8),
-            TextField(
-              controller: _path,
-              enabled: enabled,
-              decoration: const InputDecoration(
-                labelText: '绝对路径',
-                border: OutlineInputBorder(),
-                isDense: true,
+            Text(_error!, style: _errorStyle(context)),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _button(
+                label: l10n.btnInspect,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(widget.onInspect) : null,
               ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 12,
-                ),
+              _button(
+                label: l10n.btnWrite,
+                style: .tinted,
+                onPressed: enabled ? () => _submit(widget.onWrite) : null,
+              ),
+              _button(
+                label: l10n.btnRead,
+                onPressed: enabled ? () => _submit(widget.onRead) : null,
+              ),
+              _button(
+                label: l10n.btnList,
+                onPressed: enabled ? () => _submit(widget.onList) : null,
+              ),
+              _button(
+                label: l10n.btnDelete,
+                onPressed: enabled ? () => _submit(widget.onDelete) : null,
               ),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(widget.onInspect) : null,
-                  child: const Text('查询信息'),
-                ),
-                FilledButton.tonal(
-                  onPressed: enabled ? () => _submit(widget.onWrite) : null,
-                  child: const Text('写入'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? () => _submit(widget.onRead) : null,
-                  child: const Text('读取'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? () => _submit(widget.onList) : null,
-                  child: const Text('列出一层'),
-                ),
-                OutlinedButton(
-                  onPressed: enabled ? () => _submit(widget.onDelete) : null,
-                  child: const Text('删除'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '文件操作在服务端进程内执行，因此可以读写 App 自身无权访问的路径。'
-              '删除目录会自动递归。',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1208,35 +1245,277 @@ class _ServerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final info = server;
-    return Card(
+    return _PanelCard(
+      title: l10n.serverCardTitle,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                info == null ? Icons.cancel : Icons.link,
+                color: info == null ? Colors.grey : Colors.green,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                info == null
+                    ? l10n.serverDisconnected
+                    : l10n.serverConnected(info.isRoot.toString()),
+              ),
+            ],
+          ),
+          if (info != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.serverUidLine(info.uid, info.pid, info.protocolVersion),
+              style: _captionStyle(context),
+            ),
+            if (info.selinuxContext != null)
+              Text(
+                l10n.serverSelinux(info.selinuxContext!),
+                style: _captionStyle(context),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// --- Material building blocks ---------------------------------------------
+
+/// A modal viewer for the demo logs.
+///
+/// It snapshots the entries when opened (the dialog is modal, so nothing is
+/// appended while it is shown) and clears its own copy on "Clear", while also
+/// clearing the source list through [onClear].
+class _LogsDialog extends StatefulWidget {
+  const _LogsDialog({
+    required this.logs,
+    required this.onClear,
+    required this.title,
+    required this.emptyText,
+    required this.clearText,
+    required this.closeText,
+  });
+
+  final List<String> logs;
+  final VoidCallback onClear;
+  final String title;
+  final String emptyText;
+  final String clearText;
+  final String closeText;
+
+  @override
+  State<_LogsDialog> createState() => _LogsDialogState();
+}
+
+class _LogsDialogState extends State<_LogsDialog> {
+  late final List<String> _items = List<String>.from(widget.logs);
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Logs are stored newest-first, so the list is shown oldest-first and the
+    // newest ends up at the bottom. Jump to it as soon as the dialog opens.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _clear() {
+    widget.onClear();
+    setState(_items.clear);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      // Tighter spacing around the action buttons.
+      contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      actionsPadding: EdgeInsets.zero,
+      buttonPadding: const EdgeInsets.symmetric(horizontal: 4),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 320,
+        child: _items.isEmpty
+            ? Center(
+                child: Text(widget.emptyText, style: _captionStyle(context)),
+              )
+            : ListView.builder(
+                controller: _scrollController,
+                itemCount: _items.length,
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: SelectableText(
+                    // Reverse so the newest log is shown last (at the bottom).
+                    _items[_items.length - 1 - index],
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(onPressed: _clear, child: Text(widget.clearText)),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(widget.closeText),
+        ),
+      ],
+    );
+  }
+}
+
+enum _ButtonStyle { plain, tinted, filled }
+
+TextStyle _titleStyle(BuildContext context) =>
+    Theme.of(context).textTheme.titleMedium!;
+
+TextStyle _captionStyle(BuildContext context) =>
+    Theme.of(context).textTheme.bodySmall!;
+
+TextStyle _errorStyle(BuildContext context) =>
+    _captionStyle(context).copyWith(
+      color: Theme.of(context).colorScheme.error,
+    );
+
+class _PanelCard extends StatelessWidget {
+  const _PanelCard({
+    required this.title,
+    required this.child,
+    this.description,
+    this.footer,
+  });
+
+  final String title;
+
+  /// Explanatory text rendered right below the [title].
+  final String? description;
+
+  /// Explanatory text rendered below the [child].
+  final String? footer;
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: .start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  info == null ? Icons.link_off : Icons.link,
-                  color: info == null ? Colors.grey : Colors.green,
-                ),
-                const SizedBox(width: 8),
-                Text(info == null ? '未连接' : '已连接 (root=${info.isRoot})'),
-              ],
-            ),
-            if (info != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'uid=${info.uid} pid=${info.pid} '
-                'protocol=${info.protocolVersion}',
-              ),
-              if (info.selinuxContext != null)
-                Text('selinux=${info.selinuxContext}'),
+            Text(title, style: _titleStyle(context)),
+            if (description != null) ...[
+              const SizedBox(height: 4),
+              Text(description!, style: _captionStyle(context)),
+            ],
+            const SizedBox(height: 12),
+            child,
+            if (footer != null) ...[
+              const SizedBox(height: 12),
+              Text(footer!, style: _captionStyle(context)),
             ],
           ],
         ),
       ),
     );
   }
+}
+
+Widget _button({
+  required String label,
+  required VoidCallback? onPressed,
+  _ButtonStyle style = _ButtonStyle.plain,
+}) {
+  final child = Text(label);
+  return switch (style) {
+    .filled => FilledButton(onPressed: onPressed, child: child),
+    .tinted => FilledButton.tonal(onPressed: onPressed, child: child),
+    .plain => TextButton(onPressed: onPressed, child: child),
+  };
+}
+
+/// A labelled [TextField]: the label sits above the field, the placeholder
+/// becomes the Material `hintText`.
+Widget _field(
+  BuildContext context, {
+  required String label,
+  required TextEditingController controller,
+  String? placeholder,
+  bool enabled = true,
+  int maxLines = 1,
+  int? minLines,
+  TextInputType? keyboardType,
+}) {
+  return Column(
+    crossAxisAlignment: .start,
+    children: [
+      Text(label, style: _captionStyle(context)),
+      const SizedBox(height: 4),
+      TextField(
+        controller: controller,
+        enabled: enabled,
+        decoration: InputDecoration(
+          hintText: placeholder,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        ),
+        maxLines: maxLines,
+        minLines: minLines,
+        keyboardType: keyboardType,
+      ),
+    ],
+  );
+}
+
+/// A [SwitchListTile] with the title/subtitle on the leading side.
+Widget _switch(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  required bool value,
+  required ValueChanged<bool>? onChanged,
+}) {
+  return SwitchListTile(
+    title: Text(title),
+    subtitle: subtitle != null ? Text(subtitle) : null,
+    value: value,
+    onChanged: onChanged,
+    contentPadding: EdgeInsets.zero,
+  );
+}
+
+/// A [CheckboxListTile] with the checkbox on the leading side.
+Widget _check(
+  BuildContext context, {
+  required String title,
+  required bool value,
+  required ValueChanged<bool?>? onChanged,
+}) {
+  return CheckboxListTile(
+    title: Text(title),
+    value: value,
+    onChanged: onChanged,
+    controlAffinity: ListTileControlAffinity.leading,
+    contentPadding: EdgeInsets.zero,
+  );
 }
