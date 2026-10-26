@@ -69,7 +69,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.6) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.8) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -918,7 +918,7 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
 
 ## 💛 Support
 
-If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  
+If [`priv_kit`][pub] helps you build better Apps, please consider supporting it.  
 It only takes a few seconds and helps other Flutter developers discover the library.
 
 - ⭐ [Star on GitHub][GitHub]

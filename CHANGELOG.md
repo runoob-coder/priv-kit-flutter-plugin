@@ -1,3 +1,10 @@
+## 0.17.8
+
+### Sync with priv-core 0.17.8
+
+- Package version aligned with priv-core 0.17.8; runtime changes are under 0.0.12.
+- Optimize the example app: en/zh localization and a logs dialog.
+
 ## 0.0.12
 
 ### Upgrade priv-core 0.17.6 → 0.17.8
