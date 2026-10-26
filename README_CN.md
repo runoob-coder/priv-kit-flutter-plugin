@@ -867,14 +867,13 @@ dart run build_runner build
   [Shizuku API](https://github.com/RikkaApps/Shizuku-API) 的 Flutter 插件，让你的应用可以以系统权限或
   `ADB` 权限执行 `shell` 命令。
 
-## 💛 Support
+## 💛 支持
 
-If [`priv_kit`][pub] helps you build better UIs, please consider supporting it.  
-It only takes a few seconds and helps other Flutter developers discover the library.
+如果 [`priv_kit`][pub] 帮你做出了更好的App，欢迎支持一下。  
+只需几秒钟，也能让更多 Flutter 开发者发现这个库。
 
-- ⭐ [Star on GitHub][GitHub]
-- 👍 [Like on pub.dev][pub]
-
+- ⭐ [在 GitHub 上点 Star][GitHub]
+- 👍 [在 pub.dev 上点赞][pub]
 
 ## [☕️ 请我喝奶茶](https://www.noob-coder.com/buy-me-a-coffee)
 
