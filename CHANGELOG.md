@@ -1,3 +1,14 @@
+## 0.17.9
+
+### Upgrade priv-core 0.17.8 → 0.17.9
+
+priv-core replaced its own exception types with plain ones: command failures now
+surface as `IOException`, so the plugin re-tags them and Dart still receives
+`COMMAND_ERROR` instead of `FILE_ERROR`. A command executor that dies mid-run now
+reports `BINDER_DIED`, matching the raw `DeadObjectException` priv-core throws.
+ADB failures are still wrapped upstream and keep reporting `STARTUP_ERROR`, so
+no Dart API changes.
+
 ## 0.17.8
 
 ### Sync with priv-core 0.17.8

@@ -11,7 +11,6 @@ import priv.kit.core.adb.PrivilegeAdbTcpResult
 import priv.kit.core.adb.PrivilegeAdbWirelessDebuggingControlStatus
 import android.os.DeadObjectException
 import priv.kit.core.binder.PrivilegeServerUnavailableException
-import priv.kit.core.command.PrivilegeCommandException
 import priv.kit.core.command.PrivilegeCommandTimeoutException
 import android.system.ErrnoException
 import java.io.IOException
@@ -25,6 +24,18 @@ internal class PrivKitUnsupportedApiException(
 internal class PrivKitNotFoundException(
     message: String,
 ) : RuntimeException(message)
+
+/**
+ * A privileged command failure.
+ *
+ * priv-core 0.17.9 dropped `PrivilegeCommandException` and reports these as
+ * plain `IOException`s, so `PrivKitCommands` re-tags them to keep them distinct
+ * from file errors.
+ */
+internal class PrivKitCommandException(
+    message: String?,
+    cause: Throwable,
+) : RuntimeException(message, cause)
 
 internal data class PrivKitError(
     val code: String,
@@ -57,7 +68,8 @@ internal fun Throwable.toPrivKitError(): PrivKitError {
         // server being unavailable.
         is DeadObjectException -> PrivKitErrorCodes.BINDER_DIED
         is PrivilegeCommandTimeoutException -> PrivKitErrorCodes.COMMAND_TIMEOUT
-        is PrivilegeCommandException -> PrivKitErrorCodes.COMMAND
+        // Must precede IOException, which now also covers command failures.
+        is PrivKitCommandException -> PrivKitErrorCodes.COMMAND
         // Covers ErrnoException too, which reports Linux errors from a failed
         // filesystem operation such as EXDEV or EACCES.
         is IOException -> PrivKitErrorCodes.FILE

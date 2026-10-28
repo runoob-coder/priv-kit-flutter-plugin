@@ -69,7 +69,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.8) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.9) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.

@@ -16,6 +16,8 @@ import priv.kit.core.command.PrivilegeCommand
 import priv.kit.core.command.PrivilegeCommandEvent
 import priv.kit.core.command.PrivilegeCommandProcess
 import priv.kit.core.command.PrivilegeCommandResult
+import priv.kit.core.command.PrivilegeCommandTimeoutException
+import java.io.IOException
 
 /**
  * Bridges `priv.kit.core.command` to Dart.
@@ -48,7 +50,11 @@ internal class PrivKitCommands(
             ?: PrivilegeCommandProcess.DEFAULT_MAX_BYTES_PER_STREAM
         // awaitResult releases local resources on completion and cancels the
         // remote process when it does not, so no extra cleanup is needed here.
-        return process.awaitResult(maxBytes).toMap()
+        return try {
+            process.awaitResult(maxBytes).toMap()
+        } catch (throwable: Throwable) {
+            throw throwable.asCommandFailure()
+        }
     }
 
     /**
@@ -88,7 +94,13 @@ internal class PrivKitCommands(
         }
     }
 
-    private suspend fun startProcess(call: MethodCall): PrivilegeCommandProcess {
+    private suspend fun startProcess(call: MethodCall): PrivilegeCommandProcess = try {
+        startProcessUnchecked(call)
+    } catch (throwable: Throwable) {
+        throw throwable.asCommandFailure()
+    }
+
+    private suspend fun startProcessUnchecked(call: MethodCall): PrivilegeCommandProcess {
         val arguments = call.argument<List<String>>("arguments").orEmpty()
         val rawEnvironment = call.argument<Map<String, Any?>>("environment").orEmpty()
         val environment = rawEnvironment.entries.associate { (key, value) ->
@@ -139,7 +151,7 @@ internal class PrivKitCommands(
                     mainHandler.post { events?.endOfStream() }
                 } catch (throwable: Throwable) {
                     if (throwable is CancellationException) throw throwable
-                    val error = throwable.toPrivKitError()
+                    val error = throwable.asCommandFailure().toPrivKitError()
                     mainHandler.post {
                         events?.error(error.code, error.message, error.details)
                     }
@@ -163,6 +175,19 @@ internal class PrivKitCommands(
         internal fun channelName(id: String): String = "$CHANNEL_PREFIX$id"
     }
 }
+
+/**
+ * Keeps the `COMMAND_ERROR` code for Dart: priv-core 0.17.9 reports command
+ * failures as [IOException]s, which would otherwise read as file errors.
+ * A timeout stays as is, being itself an `IOException` with a more specific
+ * code.
+ */
+private fun Throwable.asCommandFailure(): Throwable =
+    if (this is PrivilegeCommandTimeoutException || this !is IOException) {
+        this
+    } else {
+        PrivKitCommandException(message, this)
+    }
 
 private fun PrivilegeCommandResult.toMap(): Map<String, Any?> = mapOf(
     "exitCode" to exitCode,
