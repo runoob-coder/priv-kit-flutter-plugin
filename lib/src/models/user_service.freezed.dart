@@ -16,11 +16,13 @@ T _$identity<T>(T value) => value;
 mixin _$PrivUserServiceSpec {
 
 /// Fully qualified name of the Kotlin class implementing the AIDL service.
- String get serviceClassName;/// Distinguishes several instances of the same class.
+///
+/// Omit it to use priv-core's built-in Binder forwarding service, which
+/// needs no app-defined class or business AIDL.
+ String? get serviceClassName;/// Distinguishes several instances of the same class.
  String get tag;/// Compatibility marker; change it to replace a running instance.
- int get version;/// When true the service runs inside the Privileged Server process instead
-/// of a dedicated child process.
- bool get embedded;/// When true the service survives the owner process death until it is
+ int get version;/// Where the service runs, and with which UID.
+ PrivUserServiceProcess get process;/// When true the service survives the owner process death until it is
 /// stopped explicitly or the server exits.
  bool get daemon;
 /// Create a copy of PrivUserServiceSpec
@@ -34,20 +36,20 @@ $PrivUserServiceSpecCopyWith<PrivUserServiceSpec> get copyWith => _$PrivUserServ
 @override
 bool operator ==(Object other) {
   final _this = this as PrivUserServiceSpec;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PrivUserServiceSpec&&(identical(other.serviceClassName, _this.serviceClassName) || other.serviceClassName == _this.serviceClassName)&&(identical(other.tag, _this.tag) || other.tag == _this.tag)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.embedded, _this.embedded) || other.embedded == _this.embedded)&&(identical(other.daemon, _this.daemon) || other.daemon == _this.daemon));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PrivUserServiceSpec&&(identical(other.serviceClassName, _this.serviceClassName) || other.serviceClassName == _this.serviceClassName)&&(identical(other.tag, _this.tag) || other.tag == _this.tag)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.process, _this.process) || other.process == _this.process)&&(identical(other.daemon, _this.daemon) || other.daemon == _this.daemon));
 }
 
 
 @override
 int get hashCode {
   final _this = this as PrivUserServiceSpec;
-  return Object.hash(runtimeType,_this.serviceClassName,_this.tag,_this.version,_this.embedded,_this.daemon);
+  return Object.hash(runtimeType,_this.serviceClassName,_this.tag,_this.version,_this.process,_this.daemon);
 }
 
 @override
 String toString() {
   final _this = this as PrivUserServiceSpec;
-  return 'PrivUserServiceSpec(serviceClassName: ${_this.serviceClassName}, tag: ${_this.tag}, version: ${_this.version}, embedded: ${_this.embedded}, daemon: ${_this.daemon})';
+  return 'PrivUserServiceSpec(serviceClassName: ${_this.serviceClassName}, tag: ${_this.tag}, version: ${_this.version}, process: ${_this.process}, daemon: ${_this.daemon})';
 }
 
 
@@ -58,7 +60,7 @@ abstract mixin class $PrivUserServiceSpecCopyWith<$Res>  {
   factory $PrivUserServiceSpecCopyWith(PrivUserServiceSpec value, $Res Function(PrivUserServiceSpec) _then) = _$PrivUserServiceSpecCopyWithImpl;
 @useResult
 $Res call({
- String serviceClassName, String tag, int version, bool embedded, bool daemon
+ String? serviceClassName, String tag, int version, PrivUserServiceProcess process, bool daemon
 });
 
 
@@ -75,13 +77,13 @@ class _$PrivUserServiceSpecCopyWithImpl<$Res>
 
 /// Create a copy of PrivUserServiceSpec
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? serviceClassName = null,Object? tag = null,Object? version = null,Object? embedded = null,Object? daemon = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? serviceClassName = freezed,Object? tag = null,Object? version = null,Object? process = null,Object? daemon = null,}) {
   return _then(PrivUserServiceSpec(
-serviceClassName: null == serviceClassName ? _self.serviceClassName : serviceClassName // ignore: cast_nullable_to_non_nullable
-as String,tag: null == tag ? _self.tag : tag // ignore: cast_nullable_to_non_nullable
+serviceClassName: freezed == serviceClassName ? _self.serviceClassName : serviceClassName // ignore: cast_nullable_to_non_nullable
+as String?,tag: null == tag ? _self.tag : tag // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as int,embedded: null == embedded ? _self.embedded : embedded // ignore: cast_nullable_to_non_nullable
-as bool,daemon: null == daemon ? _self.daemon : daemon // ignore: cast_nullable_to_non_nullable
+as int,process: null == process ? _self.process : process // ignore: cast_nullable_to_non_nullable
+as PrivUserServiceProcess,daemon: null == daemon ? _self.daemon : daemon // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -167,10 +169,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String serviceClassName,  String tag,  int version,  bool embedded,  bool daemon)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String? serviceClassName,  String tag,  int version,  PrivUserServiceProcess process,  bool daemon)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _PrivUserServiceSpec() when $default != null:
-return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_that.daemon);case _:
+return $default(_that.serviceClassName,_that.tag,_that.version,_that.process,_that.daemon);case _:
   return orElse();
 
 }
@@ -188,10 +190,10 @@ return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String serviceClassName,  String tag,  int version,  bool embedded,  bool daemon)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String? serviceClassName,  String tag,  int version,  PrivUserServiceProcess process,  bool daemon)  $default,) {final _that = this;
 switch (_that) {
 case _PrivUserServiceSpec():
-return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_that.daemon);case _:
+return $default(_that.serviceClassName,_that.tag,_that.version,_that.process,_that.daemon);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -208,10 +210,10 @@ return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String serviceClassName,  String tag,  int version,  bool embedded,  bool daemon)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String? serviceClassName,  String tag,  int version,  PrivUserServiceProcess process,  bool daemon)?  $default,) {final _that = this;
 switch (_that) {
 case _PrivUserServiceSpec() when $default != null:
-return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_that.daemon);case _:
+return $default(_that.serviceClassName,_that.tag,_that.version,_that.process,_that.daemon);case _:
   return null;
 
 }
@@ -223,18 +225,20 @@ return $default(_that.serviceClassName,_that.tag,_that.version,_that.embedded,_t
 
 
 class _PrivUserServiceSpec extends PrivUserServiceSpec {
-  const _PrivUserServiceSpec({required this.serviceClassName, this.tag = privilegeUserServiceDefaultTag, this.version = 1, this.embedded = false, this.daemon = false}): super._();
+  const _PrivUserServiceSpec({this.serviceClassName, this.tag = privilegeUserServiceDefaultTag, this.version = 1, this.process = PrivUserServiceProcess.dedicated, this.daemon = false}): super._();
   
 
 /// Fully qualified name of the Kotlin class implementing the AIDL service.
-@override final  String serviceClassName;
+///
+/// Omit it to use priv-core's built-in Binder forwarding service, which
+/// needs no app-defined class or business AIDL.
+@override final  String? serviceClassName;
 /// Distinguishes several instances of the same class.
 @override@JsonKey() final  String tag;
 /// Compatibility marker; change it to replace a running instance.
 @override@JsonKey() final  int version;
-/// When true the service runs inside the Privileged Server process instead
-/// of a dedicated child process.
-@override@JsonKey() final  bool embedded;
+/// Where the service runs, and with which UID.
+@override@JsonKey() final  PrivUserServiceProcess process;
 /// When true the service survives the owner process death until it is
 /// stopped explicitly or the server exits.
 @override@JsonKey() final  bool daemon;
@@ -249,18 +253,18 @@ _$PrivUserServiceSpecCopyWith<_PrivUserServiceSpec> get copyWith => __$PrivUserS
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PrivUserServiceSpec&&(identical(other.serviceClassName, serviceClassName) || other.serviceClassName == serviceClassName)&&(identical(other.tag, tag) || other.tag == tag)&&(identical(other.version, version) || other.version == version)&&(identical(other.embedded, embedded) || other.embedded == embedded)&&(identical(other.daemon, daemon) || other.daemon == daemon));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PrivUserServiceSpec&&(identical(other.serviceClassName, serviceClassName) || other.serviceClassName == serviceClassName)&&(identical(other.tag, tag) || other.tag == tag)&&(identical(other.version, version) || other.version == version)&&(identical(other.process, process) || other.process == process)&&(identical(other.daemon, daemon) || other.daemon == daemon));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,serviceClassName,tag,version,embedded,daemon);
+    return Object.hash(runtimeType,serviceClassName,tag,version,process,daemon);
 }
 
 @override
 String toString() {
-    return 'PrivUserServiceSpec(serviceClassName: $serviceClassName, tag: $tag, version: $version, embedded: $embedded, daemon: $daemon)';
+    return 'PrivUserServiceSpec(serviceClassName: $serviceClassName, tag: $tag, version: $version, process: $process, daemon: $daemon)';
 }
 
 
@@ -271,7 +275,7 @@ abstract mixin class _$PrivUserServiceSpecCopyWith<$Res> implements $PrivUserSer
   factory _$PrivUserServiceSpecCopyWith(_PrivUserServiceSpec value, $Res Function(_PrivUserServiceSpec) _then) = __$PrivUserServiceSpecCopyWithImpl;
 @override @useResult
 $Res call({
- String serviceClassName, String tag, int version, bool embedded, bool daemon
+ String? serviceClassName, String tag, int version, PrivUserServiceProcess process, bool daemon
 });
 
 
@@ -288,14 +292,285 @@ class __$PrivUserServiceSpecCopyWithImpl<$Res>
 
 /// Create a copy of PrivUserServiceSpec
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? serviceClassName = null,Object? tag = null,Object? version = null,Object? embedded = null,Object? daemon = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? serviceClassName = freezed,Object? tag = null,Object? version = null,Object? process = null,Object? daemon = null,}) {
   return _then(_PrivUserServiceSpec(
-serviceClassName: null == serviceClassName ? _self.serviceClassName : serviceClassName // ignore: cast_nullable_to_non_nullable
-as String,tag: null == tag ? _self.tag : tag // ignore: cast_nullable_to_non_nullable
+serviceClassName: freezed == serviceClassName ? _self.serviceClassName : serviceClassName // ignore: cast_nullable_to_non_nullable
+as String?,tag: null == tag ? _self.tag : tag // ignore: cast_nullable_to_non_nullable
 as String,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as int,embedded: null == embedded ? _self.embedded : embedded // ignore: cast_nullable_to_non_nullable
-as bool,daemon: null == daemon ? _self.daemon : daemon // ignore: cast_nullable_to_non_nullable
+as int,process: null == process ? _self.process : process // ignore: cast_nullable_to_non_nullable
+as PrivUserServiceProcess,daemon: null == daemon ? _self.daemon : daemon // ignore: cast_nullable_to_non_nullable
 as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$PrivUserServiceConnectionInfo {
+
+/// Effective UID of the process hosting the connection.
+ int get uid;/// Package identity to pass to system calls, when the UID has one.
+ String? get callingPackageName;
+/// Create a copy of PrivUserServiceConnectionInfo
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PrivUserServiceConnectionInfoCopyWith<PrivUserServiceConnectionInfo> get copyWith => _$PrivUserServiceConnectionInfoCopyWithImpl<PrivUserServiceConnectionInfo>(this as PrivUserServiceConnectionInfo, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as PrivUserServiceConnectionInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PrivUserServiceConnectionInfo&&(identical(other.uid, _this.uid) || other.uid == _this.uid)&&(identical(other.callingPackageName, _this.callingPackageName) || other.callingPackageName == _this.callingPackageName));
+}
+
+
+@override
+int get hashCode {
+  final _this = this as PrivUserServiceConnectionInfo;
+  return Object.hash(runtimeType,_this.uid,_this.callingPackageName);
+}
+
+@override
+String toString() {
+  final _this = this as PrivUserServiceConnectionInfo;
+  return 'PrivUserServiceConnectionInfo(uid: ${_this.uid}, callingPackageName: ${_this.callingPackageName})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PrivUserServiceConnectionInfoCopyWith<$Res>  {
+  factory $PrivUserServiceConnectionInfoCopyWith(PrivUserServiceConnectionInfo value, $Res Function(PrivUserServiceConnectionInfo) _then) = _$PrivUserServiceConnectionInfoCopyWithImpl;
+@useResult
+$Res call({
+ int uid, String? callingPackageName
+});
+
+
+
+
+}
+/// @nodoc
+class _$PrivUserServiceConnectionInfoCopyWithImpl<$Res>
+    implements $PrivUserServiceConnectionInfoCopyWith<$Res> {
+  _$PrivUserServiceConnectionInfoCopyWithImpl(this._self, this._then);
+
+  final PrivUserServiceConnectionInfo _self;
+  final $Res Function(PrivUserServiceConnectionInfo) _then;
+
+/// Create a copy of PrivUserServiceConnectionInfo
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? uid = null,Object? callingPackageName = freezed,}) {
+  return _then(PrivUserServiceConnectionInfo(
+uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
+as int,callingPackageName: freezed == callingPackageName ? _self.callingPackageName : callingPackageName // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [PrivUserServiceConnectionInfo].
+extension PrivUserServiceConnectionInfoPatterns on PrivUserServiceConnectionInfo {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PrivUserServiceConnectionInfo value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PrivUserServiceConnectionInfo value)  $default,){
+final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PrivUserServiceConnectionInfo value)?  $default,){
+final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int uid,  String? callingPackageName)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo() when $default != null:
+return $default(_that.uid,_that.callingPackageName);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int uid,  String? callingPackageName)  $default,) {final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo():
+return $default(_that.uid,_that.callingPackageName);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int uid,  String? callingPackageName)?  $default,) {final _that = this;
+switch (_that) {
+case _PrivUserServiceConnectionInfo() when $default != null:
+return $default(_that.uid,_that.callingPackageName);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+
+
+class _PrivUserServiceConnectionInfo extends PrivUserServiceConnectionInfo {
+  const _PrivUserServiceConnectionInfo({required this.uid, this.callingPackageName}): super._();
+  
+
+/// Effective UID of the process hosting the connection.
+@override final  int uid;
+/// Package identity to pass to system calls, when the UID has one.
+@override final  String? callingPackageName;
+
+/// Create a copy of PrivUserServiceConnectionInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PrivUserServiceConnectionInfoCopyWith<_PrivUserServiceConnectionInfo> get copyWith => __$PrivUserServiceConnectionInfoCopyWithImpl<_PrivUserServiceConnectionInfo>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PrivUserServiceConnectionInfo&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.callingPackageName, callingPackageName) || other.callingPackageName == callingPackageName));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,uid,callingPackageName);
+}
+
+@override
+String toString() {
+    return 'PrivUserServiceConnectionInfo(uid: $uid, callingPackageName: $callingPackageName)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PrivUserServiceConnectionInfoCopyWith<$Res> implements $PrivUserServiceConnectionInfoCopyWith<$Res> {
+  factory _$PrivUserServiceConnectionInfoCopyWith(_PrivUserServiceConnectionInfo value, $Res Function(_PrivUserServiceConnectionInfo) _then) = __$PrivUserServiceConnectionInfoCopyWithImpl;
+@override @useResult
+$Res call({
+ int uid, String? callingPackageName
+});
+
+
+
+
+}
+/// @nodoc
+class __$PrivUserServiceConnectionInfoCopyWithImpl<$Res>
+    implements _$PrivUserServiceConnectionInfoCopyWith<$Res> {
+  __$PrivUserServiceConnectionInfoCopyWithImpl(this._self, this._then);
+
+  final _PrivUserServiceConnectionInfo _self;
+  final $Res Function(_PrivUserServiceConnectionInfo) _then;
+
+/// Create a copy of PrivUserServiceConnectionInfo
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? uid = null,Object? callingPackageName = freezed,}) {
+  return _then(_PrivUserServiceConnectionInfo(
+uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
+as int,callingPackageName: freezed == callingPackageName ? _self.callingPackageName : callingPackageName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

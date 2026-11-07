@@ -5,6 +5,7 @@ import io.flutter.plugin.common.MethodCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import priv.kit.core.Privilege
+import priv.kit.core.PrivilegeUserServiceConnection
 import priv.kit.core.binder.PrivilegeBinderWrapper
 import priv.kit.core.binder.PrivilegeSystemServiceSource
 
@@ -20,7 +21,9 @@ import priv.kit.core.binder.PrivilegeSystemServiceSource
  * Handles store a plain [IBinder] rather than a wrapper so that the server's
  * lifecycle Binder, which is not a [PrivilegeBinderWrapper], fits the same map.
  */
-internal class PrivKitBinders {
+internal class PrivKitBinders(
+    private val userServices: PrivKitUserServices,
+) {
     private val lock = Any()
     private val binders = HashMap<Int, IBinder>()
     private var nextHandle = 1
@@ -32,6 +35,7 @@ internal class PrivKitBinders {
         PrivilegeBinderWrapper.hasSystemService(
             serviceName = call.requireString("serviceName"),
             source = call.serviceSource(),
+            userService = call.userService(),
         )
     }
 
@@ -39,13 +43,16 @@ internal class PrivKitBinders {
      * Resolves [serviceName] into a handle, or null when it is unavailable.
      *
      * Null is a normal outcome, not a failure: a service can be absent on this
-     * device, or hidden from the process the lookup runs in.
+     * device, or hidden from the process the lookup runs in. When a UserService
+     * handle is supplied, both the lookup and the wrapper's transactions are
+     * forwarded through that process.
      */
     suspend fun fromSystemService(call: MethodCall): Int? {
         val wrapper = withContext(Dispatchers.IO) {
             PrivilegeBinderWrapper.fromSystemService(
                 serviceName = call.requireString("serviceName"),
                 source = call.serviceSource(),
+                userService = call.userService(),
             )
         } ?: return null
         return remember(wrapper)
@@ -107,6 +114,12 @@ internal class PrivKitBinders {
 
     private fun MethodCall.handle(): Int =
         optionalInt("handle") ?: throw IllegalArgumentException("handle is required")
+
+    /** Optional bound UserService connection to forward lookups and calls through. */
+    private fun MethodCall.userService(): PrivilegeUserServiceConnection? {
+        val handle = optionalInt("userServiceHandle") ?: return null
+        return userServices.connectionFor(handle)
+    }
 
     private fun MethodCall.serviceSource(): PrivilegeSystemServiceSource =
         PrivilegeSystemServiceSource.valueOf(

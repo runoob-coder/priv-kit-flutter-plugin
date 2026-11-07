@@ -94,6 +94,33 @@ class _FakePlatform extends PrivKitPlatform {
   Future<int> bindUserService(PrivUserServiceSpec spec) => Future.value(1);
 
   @override
+  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
+    int connectionHandle,
+  ) => Future.value(
+    const PrivUserServiceConnectionInfo(
+      uid: 2000,
+      callingPackageName: 'com.android.shell',
+    ),
+  );
+
+  @override
+  Future<bool> binderHasSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
+  }) => Future.value(true);
+
+  @override
+  Future<int?> binderFromSystemService(
+    String serviceName, {
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
+  }) => Future.value(1);
+
+  @override
+  Future<void> binderClose(int handle) async {}
+
+  @override
   Future<void> unbindUserService(int connectionHandle) async {}
 
   @override
@@ -509,6 +536,31 @@ void main() {
     final connection = await privKit.bindUserService(userServiceSpec);
     await privKit.unbindUserService(connection);
     await privKit.stopUserService(userServiceSpec);
+
+    // UserService UID selection and Binder forwarding through that connection.
+    const forwardingSpec = PrivUserServiceSpec(
+      tag: 'shell-binder',
+      process: PrivUserServiceProcess.shell,
+    );
+    final forwarding = await privKit.bindUserService(forwardingSpec);
+    final identity = await privKit.userServiceConnectionInfo(forwarding);
+    expect(identity.uid, privilegeUserServiceUidShell);
+    expect(
+      await privKit.binderHasSystemService(
+        'activity',
+        source: PrivBinderServiceSource.remoteProcess,
+        userServiceHandle: forwarding,
+      ),
+      isTrue,
+    );
+    final forwardedHandle = await privKit.binderFromSystemService(
+      'activity',
+      source: PrivBinderServiceSource.remoteProcess,
+      userServiceHandle: forwarding,
+    );
+    expect(forwardedHandle, isNotNull);
+    await privKit.binderClose(forwardedHandle!);
+    await privKit.unbindUserService(forwarding);
 
     // File proxy: metadata, streams and walking.
     const path = '/data/local/tmp/priv_kit_demo';

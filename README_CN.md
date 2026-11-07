@@ -38,9 +38,10 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 - **命令执行** — 非交互进程，支持汇总输出与流式输出。
 - **文件代理** — 读写与遍历 App 自身无权访问的路径。
 - **崩溃日志** — 读取特权进程因未捕获异常退出时写下的报告。
-- **UserService** — 让自写的 Kotlin 类以服务端权限运行，生命周期由 Dart 驱动。
-- **Binder 访问** — 解析系统服务与服务端的生命周期 Binder，transaction 本身
-  留在 Kotlin 侧。
+- **UserService** — 让自写的 Kotlin 类或 priv-core 内置 Binder 转发服务运行在
+  所选进程/UID 中，生命周期由 Dart 驱动。
+- **Binder 访问** — 解析系统服务与服务端的生命周期 Binder，也可转发到指定的
+  UserService 连接；transaction 本身留在 Kotlin 侧。
 
 Binder 无法通过平台通道传递，Dart 拿到的是句柄而非 Binder 本身。两侧各能做
 什么见 [Binder 访问](#-binder-访问)。
@@ -63,7 +64,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.17.9），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.18.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -511,7 +512,7 @@ const spec = PrivUserServiceSpec(
   serviceClassName: 'com.example.MyPrivilegeService',
   tag: 'main',
   version: 1,
-  embedded: false,
+  process: PrivUserServiceProcess.dedicated,
   daemon: false,
 );
 
@@ -519,6 +520,8 @@ await privKit.startUserService(spec);
 
 // Dart 能持有连接句柄，但无法用它调用服务方法
 final handle = await privKit.bindUserService(spec);
+final info = await privKit.userServiceConnectionInfo(handle);
+print('uid=${info.uid} callingPackage=${info.callingPackageName}');
 await privKit.unbindUserService(handle);
 
 await privKit.stopUserService(spec);
@@ -526,6 +529,19 @@ await privKit.stopUserService(spec);
 
 实例由 `serviceClassName` + `tag` 标识。实现不再兼容时提升 `version`，运行时会
 替换掉旧的运行实例。
+
+省略 `serviceClassName` 会启动 priv-core 的内置 Binder 转发服务，无需 App 自定义
+类或 AIDL：
+
+```dart
+const forwarding = PrivUserServiceSpec(
+  tag: 'shell-binder',
+  process: PrivUserServiceProcess.shell,
+);
+final connection = await privKit.bindUserService(forwarding);
+// ……在下面的 Binder 调用里传 userServiceHandle: connection……
+await privKit.unbindUserService(connection);
+```
 
 ### 调用你自己的服务
 
@@ -542,12 +558,25 @@ try {
 }
 ```
 
-### 嵌入式与独立进程
+### 选择进程与 UID
 
-- **默认** —— 独立的 `app_process` 子进程。它的 `destroy()` 拥有进程，用
-  `exitProcess(0)` 退出。
-- **`embedded = true`** —— 跑在 Privileged Server 进程内。绑定更快、省去进程
-  启动，但 `destroy()` 只能清理服务自身资源。
+`process` 对应 priv-core 0.18.0 的 `PrivilegeUserServiceProcess`（它替换了原来的
+`embedded` 布尔值）：
+
+| 选项 | `uid` | 执行方式 |
+|------|-------|---------|
+| `PrivUserServiceProcess.dedicated`（默认） | `null` | 独立 `app_process` 子进程，继承服务端 UID |
+| `PrivUserServiceProcess.embedded` | `-1` | 跑在 Privileged Server 进程内 |
+| `PrivUserServiceProcess.root` | `0` | 独立进程，root |
+| `PrivUserServiceProcess.system` | `1000` | 独立进程，`android` |
+| `PrivUserServiceProcess.shell` | `2000` | 独立进程，`com.android.shell` |
+
+只接受这几种 UID，`PrivUserServiceProcess(uid: ...)` 会拒绝其它值。改 UID **不会**
+改变继承的 SELinux 域，也不会把这个进程变成 Android 应用进程。
+
+独立进程拥有自己的生命周期，`destroy()` 可以用 `exitProcess(0)` 退出；嵌入式服务
+共享服务端进程，只能清理自身资源。`userServiceConnectionInfo()` 返回实际生效的
+UID，以及需要传给系统接口的调用方包名（`android`、`com.android.shell` 或 `null`）。
 
 ## 🔗 Binder 访问
 
@@ -579,16 +608,49 @@ if (handle != null) {
 ```dart
 await privKit.binderFromSystemService(
   'miui.mqsas.IMQSNative',
-  source: PrivBinderServiceSource.serverProcess,
+  source: PrivBinderServiceSource.remoteProcess,
 );
 ```
 
 - `currentProcess` —— 在本 App 进程内通过 `ServiceManager` 查找。
-- `serverProcess` —— 在 Privileged Server 进程内查找。只对 `shell` 或 root
-  可见的服务要用这个。
+- `remoteProcess` —— 在已连接的远端进程内查找：不传 `userServiceHandle` 时是
+  Privileged Server，传入时是指定的 UserService 进程。只对 `shell` 或 root
+  可见的服务要用这个。旧名 `serverProcess` 保留为弃用别名，同样发送
+  `REMOTE_PROCESS`。
 
 返回 `null` 是正常结果而非错误：该服务可能在本设备不存在，也可能对执行查找的
 那个进程不可见。
+
+### 通过 UserService 转发
+
+priv-core 0.18.0 可以把查找与后续 wrapper 的 transaction 都路由到已绑定的
+UserService 进程。传入 `bindUserService` 返回的连接句柄：
+
+```dart
+final connection = await privKit.bindUserService(
+  const PrivUserServiceSpec(
+    tag: 'shell-binder',
+    process: PrivUserServiceProcess.shell,
+  ),
+);
+try {
+  final handle = await privKit.binderFromSystemService(
+    'activity',
+    source: PrivBinderServiceSource.remoteProcess,
+    userServiceHandle: connection,
+  );
+  // ……检查句柄……
+  if (handle != null) await privKit.binderClose(handle);
+} finally {
+  await privKit.unbindUserService(connection);
+}
+```
+
+`binderHasSystemService` 也接受同样的参数。使用该句柄期间必须保持连接：解绑会让
+wrapper 失效，而不会退回主服务端。Kotlin 侧可用
+`PrivilegeBinderWrapper.fromSystemService(name, userService = connection)`，已有
+Binder 则用 `fromBinder(binder, userService = connection)`；目标接口需要包名时
+传 `connection.callingPackageName`。返回的 Binder 与回调不会被递归包装。
 
 ### 发起 transaction
 
@@ -852,14 +914,13 @@ dart run build_runner build
 
 ## 📝 说明
 
-- `priv-ui` 的 `PrivilegeScaffold` 是 Compose 组件，本插件没有通过
-  `PlatformView` 暴露它；Flutter App 应基于上面的 API 自行实现授权界面，
-  这与文档「使用 priv-core 构建自定义界面」一节一致。
+- 本插件只暴露平台通道能力，Flutter App 应基于上面的 API 自行实现授权界面。
 - `PrivilegeServerInfo.lifecycleBinder` 不跨通道传递，Dart 侧只拿到
   `uid` / `pid` / `protocolVersion` / `selinuxContext`。需要把它当句柄用时
   走 [binderServerLifecycle](#-binder-访问)。
 - UserService 的 Binder 始终留在 Kotlin 侧，跨通道的只有生命周期调用和
-  一个整型连接句柄。
+  一个整型连接句柄。因此 `fromBinder(target, userService = connection)` 只能在
+  Kotlin 侧使用；Dart 侧改为在上面的 Binder 调用里传 `userServiceHandle`。
 
 ## 🔗 相关项目
 

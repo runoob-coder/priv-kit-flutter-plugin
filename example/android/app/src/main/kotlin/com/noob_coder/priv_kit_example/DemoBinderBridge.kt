@@ -23,6 +23,11 @@ import java.io.File
  * Binder access is really for — has to happen here, in Kotlin, and the results
  * go back over this small channel. The same split applies to a UserService.
  *
+ * Since priv-core 0.18.0, `fromSystemService` also accepts
+ * `userService = connection` to forward the lookup and transaction through a
+ * bound UserService process. The Dart side demonstrates that through the
+ * plugin's `binderFromSystemService(userServiceHandle: ...)`.
+ *
  * The example drives the DUMP transaction, the one behind `dumpsys`. Every
  * system service already implements it, so this needs no app-specific AIDL and
  * still proves the transaction really travelled through the Privileged Server.

@@ -198,17 +198,17 @@
   "@userServiceTitle": {
     "description": "Title of the UserService panel."
   },
-  "userServiceDesc": "DemoPrivilegeService is an AIDL service written by the app, running in the privileged process. The plugin controls start/stop from Dart; calling custom methods must go through the app's own Kotlin channel (see DemoUserServiceBridge).",
+  "userServiceDesc": "DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app's own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.",
   "@userServiceDesc": {
     "description": "Description of the UserService panel."
   },
-  "switchEmbedded": "Embedded",
-  "@switchEmbedded": {
-    "description": "Title of the embedded switch."
+  "userServiceProcess": "Process / UID",
+  "@userServiceProcess": {
+    "description": "Title of the UserService process selector."
   },
-  "switchEmbeddedSub": "When on, the service runs inside the Privileged Server process",
-  "@switchEmbeddedSub": {
-    "description": "Subtitle of the embedded switch."
+  "userServiceProcessSub": "Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain",
+  "@userServiceProcessSub": {
+    "description": "Subtitle of the UserService process selector."
   },
   "btnStart": "Start",
   "@btnStart": {
@@ -230,7 +230,7 @@
   "@binderTitle": {
     "description": "Title of the Binder panel."
   },
-  "binderDesc": "Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge).",
+  "binderDesc": "Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge). Lookups can also be forwarded through a bound UserService process.",
   "@binderDesc": {
     "description": "Description of the Binder panel."
   },
@@ -242,13 +242,13 @@
   "@placeholderServiceName": {
     "description": "Placeholder for the system service name field."
   },
-  "switchServerProcess": "Look up from server process",
+  "switchServerProcess": "Look up from remote process",
   "@switchServerProcess": {
-    "description": "Title of the server-process switch."
+    "description": "Title of the remote-process switch."
   },
-  "switchServerProcessSub": "Some services are only visible to shell / root",
+  "switchServerProcessSub": "Some services are only visible to shell / root; UserService forwarding uses this source",
   "@switchServerProcessSub": {
-    "description": "Subtitle of the server-process switch."
+    "description": "Subtitle of the remote-process switch."
   },
   "fieldDumpArgs": "DUMP args (optional, space separated)",
   "@fieldDumpArgs": {
@@ -265,6 +265,10 @@
   "btnLifecycle": "Server lifecycle Binder",
   "@btnLifecycle": {
     "description": "Button: server lifecycle Binder."
+  },
+  "btnForwardUserService": "Forward via shell UserService",
+  "@btnForwardUserService": {
+    "description": "Button: resolve a system service through the built-in shell-UID forwarding service."
   },
   "filePanelTitle": "File Proxy",
   "@filePanelTitle": {

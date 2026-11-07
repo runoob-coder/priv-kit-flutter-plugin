@@ -1,3 +1,36 @@
+## 0.18.0
+
+### Upgrade priv-core 0.17.9 → 0.18.0
+
+**Breaking:** `PrivilegeUserServiceSpec.embedded` became `process`. The Dart
+equivalent `PrivUserServiceSpec.embedded` is therefore replaced by `process`,
+a `PrivUserServiceProcess` that selects the execution process and, optionally,
+its UID:
+
+- `dedicated` (default) — inherit the server UID in a separate child process.
+- `embedded` — run inside the Privileged Server process.
+- `root` / `system` / `shell` — dedicated processes with UID 0 / 1000 / 2000.
+  Changing the UID does not change the inherited SELinux domain.
+
+`serviceClassName` is now nullable on both sides: omitting it selects
+priv-core's built-in Binder forwarding service, so no app-defined class or
+AIDL is needed for forwarding. `Privilege.bindUserService()` now also exposes
+the connection's `uid` and `callingPackageName`; the plugin returns them from
+`userServiceConnectionInfo(connectionHandle)`.
+
+Binder transactions can be forwarded through a bound UserService connection.
+`binderHasSystemService` and `binderFromSystemService` accept an optional
+`userServiceHandle` (the value returned by `bindUserService`); lookups and
+outgoing transactions then run in that process. Unbinding invalidates wrappers
+created from the connection instead of falling back to the main server.
+Kotlin code can do the same with `userService = connection` on
+`PrivilegeBinderWrapper.fromSystemService` / `fromBinder`.
+
+`PrivilegeSystemServiceSource.SERVER_PROCESS` was renamed to `REMOTE_PROCESS`,
+because the lookup can now happen in a selected UserService process rather than
+only the server. `PrivBinderServiceSource.remoteProcess` is the new Dart name;
+`serverProcess` stays as a deprecated alias and sends the new wire value.
+
 ## 0.17.9
 
 ### Upgrade priv-core 0.17.8 → 0.17.9

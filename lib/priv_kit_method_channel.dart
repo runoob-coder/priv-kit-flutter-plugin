@@ -197,6 +197,15 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       -1;
 
   @override
+  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
+    int connectionHandle,
+  ) async => PrivUserServiceConnectionInfo.fromMap(
+    await _requireMap('userServiceConnectionInfo', <String, Object?>{
+      'connectionHandle': connectionHandle,
+    }),
+  );
+
+  @override
   Future<void> unbindUserService(int connectionHandle) =>
       methodChannel.invokeMethod<void>('unbindUserService', <String, Object?>{
         'connectionHandle': connectionHandle,
@@ -210,24 +219,27 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   Future<bool> binderHasSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
   }) async =>
-      await methodChannel.invokeMethod<bool>(
-        'binderHasSystemService',
-        <String, Object?>{
-          'serviceName': serviceName,
-          'source': source.wireName,
-        },
-      ) ??
+      await methodChannel
+          .invokeMethod<bool>('binderHasSystemService', <String, Object?>{
+            'serviceName': serviceName,
+            'source': source.wireName,
+            'userServiceHandle': userServiceHandle,
+          }) ??
       false;
 
   @override
   Future<int?> binderFromSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
-  }) => methodChannel.invokeMethod<int>(
-    'binderFromSystemService',
-    <String, Object?>{'serviceName': serviceName, 'source': source.wireName},
-  );
+    int? userServiceHandle,
+  }) => methodChannel
+      .invokeMethod<int>('binderFromSystemService', <String, Object?>{
+        'serviceName': serviceName,
+        'source': source.wireName,
+        'userServiceHandle': userServiceHandle,
+      });
 
   @override
   Future<int?> binderServerLifecycle() =>

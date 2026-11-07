@@ -359,20 +359,20 @@ abstract class AppLocalizations {
   /// Description of the UserService panel.
   ///
   /// In en, this message translates to:
-  /// **'DemoPrivilegeService is an AIDL service written by the app, running in the privileged process. The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge).'**
+  /// **'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.'**
   String get userServiceDesc;
 
-  /// Title of the embedded switch.
+  /// Title of the UserService process selector.
   ///
   /// In en, this message translates to:
-  /// **'Embedded'**
-  String get switchEmbedded;
+  /// **'Process / UID'**
+  String get userServiceProcess;
 
-  /// Subtitle of the embedded switch.
+  /// Subtitle of the UserService process selector.
   ///
   /// In en, this message translates to:
-  /// **'When on, the service runs inside the Privileged Server process'**
-  String get switchEmbeddedSub;
+  /// **'Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain'**
+  String get userServiceProcessSub;
 
   /// Button: start the service.
   ///
@@ -407,7 +407,7 @@ abstract class AppLocalizations {
   /// Description of the Binder panel.
   ///
   /// In en, this message translates to:
-  /// **'Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge).'**
+  /// **'Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge). Lookups can also be forwarded through a bound UserService process.'**
   String get binderDesc;
 
   /// Label for the system service name field.
@@ -422,16 +422,16 @@ abstract class AppLocalizations {
   /// **'activity'**
   String get placeholderServiceName;
 
-  /// Title of the server-process switch.
+  /// Title of the remote-process switch.
   ///
   /// In en, this message translates to:
-  /// **'Look up from server process'**
+  /// **'Look up from remote process'**
   String get switchServerProcess;
 
-  /// Subtitle of the server-process switch.
+  /// Subtitle of the remote-process switch.
   ///
   /// In en, this message translates to:
-  /// **'Some services are only visible to shell / root'**
+  /// **'Some services are only visible to shell / root; UserService forwarding uses this source'**
   String get switchServerProcessSub;
 
   /// Label for the DUMP args field.
@@ -457,6 +457,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server lifecycle Binder'**
   String get btnLifecycle;
+
+  /// Button: resolve a system service through the built-in shell-UID forwarding service.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward via shell UserService'**
+  String get btnForwardUserService;
 
   /// Title of the File panel.
   ///

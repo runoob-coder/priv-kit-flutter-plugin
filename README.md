@@ -42,10 +42,12 @@ This plugin covers the parts of [`priv-core`][priv-core] that make sense to driv
   streamed output.
 - **File proxy** — read, write and traverse paths your app itself cannot reach.
 - **Crash logs** — read the report a privileged process wrote when it died.
-- **UserService** — run your own Kotlin class with the server's privileges,
-  with the lifecycle driven from Dart.
+- **UserService** — run your own Kotlin class or priv-core's built-in Binder
+  forwarding service in a selected process/UID, with the lifecycle driven from
+  Dart.
 - **Binder access** — resolve system services and the server's lifecycle
-  Binder. Transactions themselves stay in Kotlin.
+  Binder, optionally forwarding through a UserService connection. Transactions
+  themselves stay in Kotlin.
 
 A Binder cannot cross the platform channel, so Dart receives handles rather
 than Binders. See [Binder access](#-binder-access) for what that leaves on each
@@ -69,7 +71,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.17.9) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.18.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -538,7 +540,7 @@ const spec = PrivUserServiceSpec(
   serviceClassName: 'com.example.MyPrivilegeService',
   tag: 'main',
   version: 1,
-  embedded: false,
+  process: PrivUserServiceProcess.dedicated,
   daemon: false,
 );
 
@@ -546,6 +548,8 @@ await privKit.startUserService(spec);
 
 // Dart can hold the connection handle, but cannot call the service with it.
 final handle = await privKit.bindUserService(spec);
+final info = await privKit.userServiceConnectionInfo(handle);
+print('uid=${info.uid} callingPackage=${info.callingPackageName}');
 await privKit.unbindUserService(handle);
 
 await privKit.stopUserService(spec);
@@ -554,6 +558,19 @@ await privKit.stopUserService(spec);
 An instance is identified by `serviceClassName` plus `tag`. Bump `version` when
 the implementation is no longer compatible, and the runtime replaces the
 running instance.
+
+Omit `serviceClassName` to start priv-core's built-in Binder forwarding
+service, which needs no app-defined class or AIDL:
+
+```dart
+const forwarding = PrivUserServiceSpec(
+  tag: 'shell-binder',
+  process: PrivUserServiceProcess.shell,
+);
+final connection = await privKit.bindUserService(forwarding);
+// ... use `userServiceHandle: connection` on the Binder calls below ...
+await privKit.unbindUserService(connection);
+```
 
 ### Calling your service
 
@@ -570,13 +587,28 @@ try {
 }
 ```
 
-### Embedded vs dedicated
+### Choosing the process and UID
 
-- **Default** — a dedicated `app_process` child process. Its `destroy()` owns
-  the process and exits with `exitProcess(0)`.
-- **`embedded = true`** — runs inside the Privileged Server process. Binding is
-  faster and skips process startup, but `destroy()` may only release the
-  service's own resources.
+`process` mirrors `PrivilegeUserServiceProcess` from priv-core 0.18.0 (which
+replaced the old `embedded` boolean):
+
+| Selection | `uid` | Execution |
+|-----------|-------|-----------|
+| `PrivUserServiceProcess.dedicated` (default) | `null` | separate `app_process` child inheriting the server UID |
+| `PrivUserServiceProcess.embedded` | `-1` | inside the Privileged Server process |
+| `PrivUserServiceProcess.root` | `0` | dedicated process as root |
+| `PrivUserServiceProcess.system` | `1000` | dedicated process as `android` |
+| `PrivUserServiceProcess.shell` | `2000` | dedicated process as `com.android.shell` |
+
+Only these UIDs are accepted; `PrivUserServiceProcess(uid: ...)` rejects any
+other value. Changing the UID does **not** change the inherited SELinux domain
+or turn the process into an Android application process.
+
+A dedicated process owns its lifetime, so its `destroy()` can call
+`exitProcess(0)`. An embedded service shares the server process and may only
+release its own resources. `userServiceConnectionInfo()` reports the effective
+UID and the package identity (`android`, `com.android.shell` or `null`) to pass
+to system calls that require a calling package.
 
 ## 🔗 Binder access
 
@@ -609,16 +641,52 @@ if (handle != null) {
 ```dart
 await privKit.binderFromSystemService(
   'miui.mqsas.IMQSNative',
-  source: PrivBinderServiceSource.serverProcess,
+  source: PrivBinderServiceSource.remoteProcess,
 );
 ```
 
 - `currentProcess` — through `ServiceManager` in your own process.
-- `serverProcess` — inside the Privileged Server. Use it for services only
-  published to `shell` or root.
+- `remoteProcess` — inside the connected remote process: the Privileged Server,
+  or a selected UserService process when `userServiceHandle` is supplied. Use
+  it for services only published to `shell` or root. `serverProcess` remains as
+  a deprecated alias sending the same `REMOTE_PROCESS` wire value.
 
 A `null` result is normal, not a failure: the service may be absent on this
 device, or hidden from the process doing the lookup.
+
+### Forwarding through a UserService
+
+priv-core 0.18.0 can route both the lookup and the resulting wrapper's
+transactions through a bound UserService process. Pass the connection handle
+from `bindUserService`:
+
+```dart
+final connection = await privKit.bindUserService(
+  const PrivUserServiceSpec(
+    tag: 'shell-binder',
+    process: PrivUserServiceProcess.shell,
+  ),
+);
+try {
+  final handle = await privKit.binderFromSystemService(
+    'activity',
+    source: PrivBinderServiceSource.remoteProcess,
+    userServiceHandle: connection,
+  );
+  // ... inspect the handle ...
+  if (handle != null) await privKit.binderClose(handle);
+} finally {
+  await privKit.unbindUserService(connection);
+}
+```
+
+`binderHasSystemService` takes the same parameter. Keep the connection bound
+for as long as you use the handle: unbinding invalidates the wrapper instead of
+falling back to the main server. In Kotlin, use
+`PrivilegeBinderWrapper.fromSystemService(name, userService = connection)` —
+or `fromBinder(binder, userService = connection)` for an existing Binder —
+and `connection.callingPackageName` when the target API needs a package
+identity. Returned Binders and callbacks are not wrapped recursively.
 
 ### Issuing transactions
 
@@ -901,14 +969,15 @@ JSON, and values like `Uint8List` should not round-trip through a JSON codec.
 
 ## 📝 Notes
 
-- `priv-ui`'s `PrivilegeScaffold` is a Compose component and is not exposed
-  through a `PlatformView`. Build your own authorization UI on top of the API
-  above, which matches the "custom UI with priv-core" approach in the docs.
+- Build your authorization UI on top of the API above: this plugin exposes
+  platform channels only, so Flutter apps render their own screens.
 - `PrivilegeServerInfo.lifecycleBinder` is not sent across the channel. Dart
   receives `uid`, `pid`, `protocolVersion` and `selinuxContext` only. Use
   [binderServerLifecycle](#-binder-access) when you need it as a handle.
 - A UserService's Binder stays in Kotlin: only the lifecycle calls and an
-  integer connection handle cross the channel.
+  integer connection handle cross the channel. `fromBinder(target,
+  userService = connection)` is therefore Kotlin-only; Dart uses
+  `userServiceHandle` on the Binder calls above.
 
 ## 🔗 Related Projects
 

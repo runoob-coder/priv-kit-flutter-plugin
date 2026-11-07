@@ -43,7 +43,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var commands: PrivKitCommands
     private lateinit var files: PrivKitFiles
     private val userServices = PrivKitUserServices()
-    private val binders = PrivKitBinders()
+    private val binders = PrivKitBinders(userServices)
     private val operations = HashMap<String, Job>()
     private val operationLock = Any()
     private var serverStateJob: Job? = null
@@ -302,6 +302,8 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         }
 
                         "bindUserService" -> userServices.bind(call)
+
+                        "userServiceConnectionInfo" -> userServices.connectionInfo(call)
 
                         "unbindUserService" -> {
                             userServices.unbind(call)

@@ -8,15 +8,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import priv.kit.core.Privilege
 import priv.kit.core.PrivilegeUserServiceConnection
+import priv.kit.core.userservice.PrivilegeUserServiceProcess
 import priv.kit.core.userservice.PrivilegeUserServiceSpec
 
 /**
  * Bridges `priv.kit.core.userservice` to Dart.
  *
- * A UserService runs the app's own Kotlin code with the server's privileges.
- * The Binder returned by [Privilege.bindUserService] cannot cross the platform
- * channel, so Dart can only manage the lifecycle here; calling the service's
- * own AIDL methods has to happen in Kotlin, see the example app.
+ * A UserService runs either the app's own Kotlin code or priv-core's built-in
+ * Binder forwarding service, in the process and UID selected by the spec. The
+ * Binder returned by [Privilege.bindUserService] cannot cross the platform
+ * channel, so Dart can only manage the lifecycle here; calling a service's own
+ * AIDL methods has to happen in Kotlin, see the example app.
  */
 internal class PrivKitUserServices {
     private val lock = Any()
@@ -25,7 +27,8 @@ internal class PrivKitUserServices {
 
     // Dart names these startUserService / bindUserService / ... so match on the
     // shared suffix rather than a prefix.
-    fun handles(method: String): Boolean = method.endsWith("UserService")
+    fun handles(method: String): Boolean =
+        method.endsWith("UserService") || method == "userServiceConnectionInfo"
 
     suspend fun start(call: MethodCall) {
         withContext(Dispatchers.IO) {
@@ -45,9 +48,22 @@ internal class PrivKitUserServices {
         }
     }
 
+    /** Effective UID and calling package of a bound connection. */
+    fun connectionInfo(call: MethodCall): Map<String, Any?> {
+        val connection = connectionFor(call.connectionHandle())
+        return mapOf(
+            "uid" to connection.uid,
+            "callingPackageName" to connection.callingPackageName,
+        )
+    }
+
+    /** Resolves a Dart-held handle to the connection used for Binder forwarding. */
+    fun connectionFor(handle: Int): PrivilegeUserServiceConnection =
+        synchronized(lock) { connections[handle] }
+            ?: throw PrivKitNotFoundException("Unknown UserService connection handle: $handle")
+
     suspend fun unbind(call: MethodCall) {
-        val handle = call.optionalInt("connectionHandle")
-            ?: throw IllegalArgumentException("connectionHandle is required")
+        val handle = call.connectionHandle()
         val connection = synchronized(lock) { connections.remove(handle) }
         // unbind() is idempotent and finishes in a non-cancellable context, so
         // a cancelled caller still gets its resources released.
@@ -79,12 +95,18 @@ internal class PrivKitUserServices {
     }
 
     private fun MethodCall.spec(): PrivilegeUserServiceSpec = PrivilegeUserServiceSpec(
-        serviceClassName = requireString("serviceClassName"),
+        // A null class name selects priv-core's built-in Binder forwarding
+        // service, which needs no app-defined class or AIDL.
+        serviceClassName = argument<String>("serviceClassName"),
         tag = argument<String>("tag") ?: DEFAULT_TAG,
         version = optionalInt("version") ?: 1,
-        embedded = argument<Boolean>("embedded") ?: false,
+        process = PrivilegeUserServiceProcess(uid = optionalInt("processUid")),
         daemon = argument<Boolean>("daemon") ?: false,
     )
+
+    private fun MethodCall.connectionHandle(): Int =
+        optionalInt("connectionHandle")
+            ?: throw IllegalArgumentException("connectionHandle is required")
 
     private companion object {
         private const val DEFAULT_TAG = "default"

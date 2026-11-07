@@ -7,7 +7,9 @@ import kotlin.system.exitProcess
 import priv.kit.core.userservice.PrivilegeUserServiceEnvironment
 
 /**
- * A minimal UserService: app code that runs with the server's privileges.
+ * A minimal UserService: app code that runs with the privileges of the process
+ * selected by `PrivilegeUserServiceSpec.process` (dedicated, embedded or a
+ * chosen UID).
  *
  * Priv Kit instantiates the service through either a no-arg constructor or a
  * `Context` constructor, so both are provided and both are marked `@Keep` to

@@ -108,7 +108,7 @@ void main() {
         serviceClassName: 'com.example.MyService',
         tag: 'main',
         version: 3,
-        embedded: true,
+        process: PrivUserServiceProcess.shell,
         daemon: true,
       ),
     );
@@ -117,8 +117,22 @@ void main() {
     expect(call.arguments['serviceClassName'], 'com.example.MyService');
     expect(call.arguments['tag'], 'main');
     expect(call.arguments['version'], 3);
-    expect(call.arguments['embedded'], true);
+    expect(call.arguments['processUid'], privilegeUserServiceUidShell);
     expect(call.arguments['daemon'], true);
+  });
+
+  test('startUserService can select the built-in forwarding service', () async {
+    await platform.startUserService(
+      const PrivUserServiceSpec(
+        tag: 'shell-binder',
+        process: PrivUserServiceProcess.shell,
+      ),
+    );
+
+    final call = log.singleWhere((c) => c.method == 'startUserService');
+    expect(call.arguments['serviceClassName'], isNull);
+    expect(call.arguments['tag'], 'shell-binder');
+    expect(call.arguments['processUid'], privilegeUserServiceUidShell);
   });
 
   test('bindUserService returns the connection handle', () async {
@@ -137,8 +151,27 @@ void main() {
     // Defaults are filled in on the Dart side.
     expect(call.arguments['tag'], privilegeUserServiceDefaultTag);
     expect(call.arguments['version'], 1);
-    expect(call.arguments['embedded'], false);
+    expect(call.arguments['processUid'], isNull);
     expect(call.arguments['daemon'], false);
+  });
+
+  test('userServiceConnectionInfo decodes the connection identity', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return <String, Object?>{
+            'uid': 2000,
+            'callingPackageName': 'com.android.shell',
+          };
+        });
+
+    final info = await platform.userServiceConnectionInfo(9);
+    expect(info.uid, 2000);
+    expect(info.callingPackageName, 'com.android.shell');
+    final call = log.singleWhere(
+      (c) => c.method == 'userServiceConnectionInfo',
+    );
+    expect(call.arguments['connectionHandle'], 9);
   });
 
   test(
@@ -493,28 +526,47 @@ void main() {
     ]);
   });
 
-  test('binderHasSystemService forwards the name and the source', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
-          if (methodCall.method == 'binderHasSystemService') return true;
-          return null;
-        });
+  test(
+    'binderHasSystemService forwards name, source and UserService',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            log.add(methodCall);
+            if (methodCall.method == 'binderHasSystemService') return true;
+            return null;
+          });
 
-    final has = await platform.binderHasSystemService(
-      'activity',
-      source: PrivBinderServiceSource.serverProcess,
-    );
-    expect(has, isTrue);
+      final has = await platform.binderHasSystemService(
+        'activity',
+        source: PrivBinderServiceSource.remoteProcess,
+        userServiceHandle: 12,
+      );
+      expect(has, isTrue);
 
-    final call = log.single;
-    expect(call.arguments['serviceName'], 'activity');
-    expect(call.arguments['source'], 'SERVER_PROCESS');
-  });
+      final call = log.single;
+      expect(call.arguments['serviceName'], 'activity');
+      expect(call.arguments['source'], 'REMOTE_PROCESS');
+      expect(call.arguments['userServiceHandle'], 12);
+    },
+  );
 
   test('binderHasSystemService defaults to the current process', () async {
     await platform.binderHasSystemService('package');
     expect(log.single.arguments['source'], 'CURRENT_PROCESS');
+    expect(log.single.arguments['userServiceHandle'], isNull);
+  });
+
+  test('binderFromSystemService forwards the UserService handle', () async {
+    await platform.binderFromSystemService(
+      'activity',
+      source: PrivBinderServiceSource.remoteProcess,
+      userServiceHandle: 7,
+    );
+
+    final call = log.singleWhere((c) => c.method == 'binderFromSystemService');
+    expect(call.arguments['serviceName'], 'activity');
+    expect(call.arguments['source'], 'REMOTE_PROCESS');
+    expect(call.arguments['userServiceHandle'], 7);
   });
 
   test('binderFromSystemService returns null when unavailable', () async {

@@ -9,6 +9,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import priv.kit.core.Privilege
+import priv.kit.core.userservice.PrivilegeUserServiceProcess
 import priv.kit.core.userservice.PrivilegeUserServiceSpec
 
 /**
@@ -21,7 +22,8 @@ import priv.kit.core.userservice.PrivilegeUserServiceSpec
  *
  * The example app drives the lifecycle through the plugin
  * (`startUserService` / `stopUserService`); this bridge only binds, calls and
- * unbinds.
+ * unbinds. `processUid` selects dedicated / embedded / root / system / shell,
+ * exactly as `PrivUserServiceSpec.process` does on the Dart side.
  */
 internal class DemoUserServiceBridge(
     messenger: BinaryMessenger,
@@ -38,7 +40,7 @@ internal class DemoUserServiceBridge(
     ) {
         when (call.method) {
             "call" -> {
-                val embedded = call.argument<Boolean>("embedded") ?: false
+                val processUid = (call.argument<Number>("processUid"))?.toInt()
                 val method = call.argument<String>("method")
                 val args = call.argument<Map<String, Any?>>("args").orEmpty()
                 if (method == null) {
@@ -47,7 +49,7 @@ internal class DemoUserServiceBridge(
                 }
                 scope.launch {
                     try {
-                        result.success(withContext(Dispatchers.IO) { invoke(embedded, method, args) })
+                        result.success(withContext(Dispatchers.IO) { invoke(processUid, method, args) })
                     } catch (throwable: Throwable) {
                         result.error(
                             "DEMO_USER_SERVICE",
@@ -63,17 +65,18 @@ internal class DemoUserServiceBridge(
     }
 
     private suspend fun invoke(
-        embedded: Boolean,
+        processUid: Int?,
         method: String,
         args: Map<String, Any?>,
     ): Any? {
+        val process = PrivilegeUserServiceProcess(uid = processUid)
         val spec = PrivilegeUserServiceSpec(
             serviceClassName = DemoPrivilegeService::class.java.name,
-            // Separate instances per mode, so switching modes does not replace
-            // a running service.
-            tag = if (embedded) "demo-embedded" else "demo-standalone",
+            // Separate instances per process selection, so switching it does
+            // not replace a running service.
+            tag = "demo-${processUid ?: "dedicated"}",
             version = 1,
-            embedded = embedded,
+            process = process,
         )
         val connection = Privilege.bindUserService(spec)
         return try {

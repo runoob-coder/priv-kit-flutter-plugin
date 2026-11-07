@@ -201,6 +201,15 @@ abstract class PrivKitPlatform extends PlatformInterface {
     throw UnimplementedError('bindUserService() has not been implemented.');
   }
 
+  /// Effective UID and calling package of a bound UserService connection.
+  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
+    int connectionHandle,
+  ) {
+    throw UnimplementedError(
+      'userServiceConnectionInfo() has not been implemented.',
+    );
+  }
+
   /// Releases a connection handle returned by [bindUserService].
   Future<void> unbindUserService(int connectionHandle) {
     throw UnimplementedError('unbindUserService() has not been implemented.');
@@ -212,9 +221,13 @@ abstract class PrivKitPlatform extends PlatformInterface {
   }
 
   /// Whether [serviceName] can be resolved from [source].
+  ///
+  /// [userServiceHandle] forwards the lookup through a bound UserService
+  /// connection, as returned by [bindUserService].
   Future<bool> binderHasSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
   }) {
     throw UnimplementedError(
       'binderHasSystemService() has not been implemented.',
@@ -225,12 +238,16 @@ abstract class PrivKitPlatform extends PlatformInterface {
   ///
   /// Returns `null` when the service is not available from [source].
   ///
+  /// [userServiceHandle] forwards both the lookup and the wrapper's
+  /// transactions through a bound UserService connection.
+  ///
   /// A Binder cannot cross the platform channel, so Dart only gets an integer
   /// handle. Issuing the service's own transactions has to happen in Kotlin,
   /// the same way a UserService is called.
   Future<int?> binderFromSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
   }) {
     throw UnimplementedError(
       'binderFromSystemService() has not been implemented.',

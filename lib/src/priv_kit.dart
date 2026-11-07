@@ -211,19 +211,23 @@ class PrivKit {
     ),
   );
 
-  /// Starts an app-defined UserService.
+  /// Starts a UserService.
   ///
   /// The service is a Kotlin class you write, implementing an AIDL interface,
-  /// and it runs with the server's privileges. See [bindUserService] for how to
-  /// reach it.
+  /// and it runs with the privileges of the process selected by
+  /// [PrivUserServiceSpec.process]. Omit `serviceClassName` to start
+  /// priv-core's built-in Binder forwarding service instead. See
+  /// [bindUserService] for how to reach it.
   Future<void> startUserService(PrivUserServiceSpec spec) =>
       _guard(() => _platform.startUserService(spec));
 
-  /// Binds an app-defined UserService and returns a connection handle.
+  /// Binds a UserService and returns a connection handle.
   ///
   /// **The Binder cannot cross the platform channel**, so Dart cannot call the
   /// service's own AIDL methods. This call exists so Dart can manage the
-  /// connection lifetime: keep the handle and pass it to [unbindUserService].
+  /// connection lifetime: keep the handle and pass it to
+  /// [userServiceConnectionInfo], [binderFromSystemService] or
+  /// [unbindUserService].
   ///
   /// To invoke your service's methods, bind it from Kotlin, convert the Binder
   /// with `YourService.Stub.asInterface(connection.binder)` and expose the
@@ -231,11 +235,21 @@ class PrivKit {
   Future<int> bindUserService(PrivUserServiceSpec spec) =>
       _guard(() => _platform.bindUserService(spec));
 
+  /// Effective UID and calling package of a bound UserService connection.
+  ///
+  /// `callingPackageName` is `android` for UID 1000, `com.android.shell` for
+  /// UID 2000, and `null` for other UIDs. Pass it to system calls that require
+  /// a calling package identity. The connection must still be bound:
+  /// [unbindUserService] invalidates the handle.
+  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
+    int connectionHandle,
+  ) => _guard(() => _platform.userServiceConnectionInfo(connectionHandle));
+
   /// Releases a connection handle returned by [bindUserService].
   Future<void> unbindUserService(int connectionHandle) =>
       _guard(() => _platform.unbindUserService(connectionHandle));
 
-  /// Stops an app-defined UserService.
+  /// Stops a UserService.
   Future<void> stopUserService(PrivUserServiceSpec spec) =>
       _guard(() => _platform.stopUserService(spec));
 
@@ -243,15 +257,28 @@ class PrivKit {
   ///
   /// Cheaper than [binderFromSystemService] when you only need to know whether
   /// the service exists — for example to decide which source to use.
+  ///
+  /// [userServiceHandle] is a handle from [bindUserService]; when supplied, the
+  /// lookup runs in that UserService process instead of the main server.
   Future<bool> binderHasSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
   }) => _guard(
-    () => _platform.binderHasSystemService(serviceName, source: source),
+    () => _platform.binderHasSystemService(
+      serviceName,
+      source: source,
+      userServiceHandle: userServiceHandle,
+    ),
   );
 
   /// Resolves [serviceName] into a handle Dart can inspect, or `null` when the
   /// service is not available from [source].
+  ///
+  /// [userServiceHandle] forwards both the lookup and the returned wrapper's
+  /// transactions through a bound UserService process. Keep that connection
+  /// bound for as long as you use the handle: unbinding invalidates the wrapper
+  /// instead of falling back to the main server.
   ///
   /// **A Binder cannot cross the platform channel.** Dart gets an integer
   /// handle, and can only ask the Binder about itself — [binderPing],
@@ -266,8 +293,13 @@ class PrivKit {
   Future<int?> binderFromSystemService(
     String serviceName, {
     PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    int? userServiceHandle,
   }) => _guard(
-    () => _platform.binderFromSystemService(serviceName, source: source),
+    () => _platform.binderFromSystemService(
+      serviceName,
+      source: source,
+      userServiceHandle: userServiceHandle,
+    ),
   );
 
   /// Handle for the connected server's lifecycle Binder, or `null` when no
@@ -291,8 +323,8 @@ class PrivKit {
 
   /// Whether [handle] answers a ping.
   ///
-  /// For a service resolved with [PrivBinderServiceSource.serverProcess] this
-  /// checks the server side rather than the endpoint itself.
+  /// For a service resolved with [PrivBinderServiceSource.remoteProcess] this
+  /// checks the remote process rather than the endpoint itself.
   Future<bool> binderPing(int handle) =>
       _guard(() => _platform.binderPing(handle));
 

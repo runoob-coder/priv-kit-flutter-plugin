@@ -58,5 +58,39 @@ void main() {
 
       expect(kinds, ['stdout', 'stderr', 'exit']);
     });
+
+    test('PrivUserServiceProcess validates the supported UIDs', () {
+      expect(PrivUserServiceProcess.dedicated.uid, isNull);
+      expect(PrivUserServiceProcess.embedded.isEmbedded, isTrue);
+      expect(
+        PrivUserServiceProcess(uid: privilegeUserServiceUidShell),
+        PrivUserServiceProcess.shell,
+      );
+      expect(() => PrivUserServiceProcess(uid: 42), throwsArgumentError);
+      for (final uid in const [
+        privilegeUserServiceUidEmbedded,
+        privilegeUserServiceUidRoot,
+        privilegeUserServiceUidSystem,
+        privilegeUserServiceUidShell,
+      ]) {
+        expect(PrivUserServiceProcess(uid: uid).uid, uid);
+      }
+    });
+
+    test('PrivUserServiceSpec encodes the process and connection info', () {
+      const spec = PrivUserServiceSpec(
+        tag: 'shell-binder',
+        process: PrivUserServiceProcess.shell,
+      );
+      expect(spec.serviceClassName, isNull);
+      expect(spec.toMap()['processUid'], privilegeUserServiceUidShell);
+
+      final info = PrivUserServiceConnectionInfo.fromMap(<dynamic, dynamic>{
+        'uid': 2000,
+        'callingPackageName': 'com.android.shell',
+      });
+      expect(info.uid, 2000);
+      expect(info.callingPackageName, 'com.android.shell');
+    });
   });
 }

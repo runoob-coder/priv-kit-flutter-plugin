@@ -152,14 +152,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get userServiceDesc =>
-      'DemoPrivilegeService is an AIDL service written by the app, running in the privileged process. The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge).';
+      'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.';
 
   @override
-  String get switchEmbedded => 'Embedded';
+  String get userServiceProcess => 'Process / UID';
 
   @override
-  String get switchEmbeddedSub =>
-      'When on, the service runs inside the Privileged Server process';
+  String get userServiceProcessSub =>
+      'Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain';
 
   @override
   String get btnStart => 'Start';
@@ -178,7 +178,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get binderDesc =>
-      'Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge).';
+      'Binder cannot cross the platform channel: Dart can only obtain an integer handle and query liveness and the descriptor. The real transaction must be issued on the Kotlin side (see DemoBinderBridge). Lookups can also be forwarded through a bound UserService process.';
 
   @override
   String get fieldServiceName => 'System service name';
@@ -187,11 +187,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get placeholderServiceName => 'activity';
 
   @override
-  String get switchServerProcess => 'Look up from server process';
+  String get switchServerProcess => 'Look up from remote process';
 
   @override
   String get switchServerProcessSub =>
-      'Some services are only visible to shell / root';
+      'Some services are only visible to shell / root; UserService forwarding uses this source';
 
   @override
   String get fieldDumpArgs => 'DUMP args (optional, space separated)';
@@ -204,6 +204,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get btnLifecycle => 'Server lifecycle Binder';
+
+  @override
+  String get btnForwardUserService => 'Forward via shell UserService';
 
   @override
   String get filePanelTitle => 'File Proxy';

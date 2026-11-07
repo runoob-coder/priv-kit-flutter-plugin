@@ -148,13 +148,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get userServiceDesc =>
-      'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在特权进程。插件的 start/stop 由 Dart 控制；调用自定义方法必须走 App 自己的 Kotlin 通道（见 DemoUserServiceBridge）。';
+      'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在所选特权进程（独立、嵌入或指定 UID）。插件的 start/stop 由 Dart 控制；调用自定义方法必须走 App 自己的 Kotlin 通道（见 DemoUserServiceBridge）。省略 serviceClassName 则启动内置 Binder 转发服务。';
 
   @override
-  String get switchEmbedded => '嵌入式（embedded）';
+  String get userServiceProcess => '运行进程 / UID';
 
   @override
-  String get switchEmbeddedSub => '开启后服务跑在 Privileged Server 进程内';
+  String get userServiceProcessSub =>
+      '独立、嵌入、root、system 或 shell；改 UID 不会改变 SELinux 域';
 
   @override
   String get btnStart => '启动';
@@ -173,7 +174,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get binderDesc =>
-      'Binder 无法通过平台通道传递：Dart 只能拿到整型句柄，做存活与描述符查询。真正的 transaction 必须在 Kotlin 侧发起，见 DemoBinderBridge。';
+      'Binder 无法通过平台通道传递：Dart 只能拿到整型句柄，做存活与描述符查询。真正的 transaction 必须在 Kotlin 侧发起，见 DemoBinderBridge。查找也可以转发到已绑定的 UserService 进程。';
 
   @override
   String get fieldServiceName => '系统服务名';
@@ -182,10 +183,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get placeholderServiceName => 'activity';
 
   @override
-  String get switchServerProcess => '从服务端进程查找';
+  String get switchServerProcess => '从远端进程查找';
 
   @override
-  String get switchServerProcessSub => '部分服务只对 shell / root 可见';
+  String get switchServerProcessSub =>
+      '部分服务只对 shell / root 可见；通过 UserService 转发时同样使用该来源';
 
   @override
   String get fieldDumpArgs => 'DUMP 参数（可选，空格分隔）';
@@ -198,6 +200,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get btnLifecycle => '服务端生命周期 Binder';
+
+  @override
+  String get btnForwardUserService => '通过 shell UserService 转发';
 
   @override
   String get filePanelTitle => '文件代理';
