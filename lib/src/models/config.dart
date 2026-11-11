@@ -20,9 +20,9 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
     required int followDeathDelayMillis,
     required bool activeReconnectOnOwnerDeath,
 
-    /// Absolute directory the server writes crash reports to, or `null` when
-    /// only `/data/local/tmp` is used.
-    String? crashLogDirectory,
+    /// Existing absolute crash-report directories, in write order. priv-core
+    /// stops at the first successful write; empty means fallback only.
+    @Default(<String>[]) List<String> crashLogDirectories,
   }) = _PrivRuntimeConfig;
 
   const PrivRuntimeConfig._();
@@ -36,14 +36,18 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
         activeReconnectOnOwnerDeath:
             map['activeReconnectOnOwnerDeath'] as bool? ??
             privilegeDefaultActiveReconnectOnOwnerDeath,
-        crashLogDirectory: map['crashLogDirectory'] as String?,
+        crashLogDirectories:
+            (map['crashLogDirectories'] as List?)
+                ?.whereType<String>()
+                .toList() ??
+            const <String>[],
       );
 
   /// Encodes the configuration for the Android side.
   Map<String, Object?> toMap() => <String, Object?>{
     'followDeathDelayMillis': followDeathDelayMillis,
     'activeReconnectOnOwnerDeath': activeReconnectOnOwnerDeath,
-    'crashLogDirectory': crashLogDirectory,
+    'crashLogDirectories': crashLogDirectories,
   };
 
   /// How long the server waits for the owner process to reconnect.
@@ -55,5 +59,5 @@ abstract class PrivRuntimeConfig with _$PrivRuntimeConfig {
       followDeathDelayMillis == privilegeDefaultFollowDeathDelayMillis &&
       activeReconnectOnOwnerDeath ==
           privilegeDefaultActiveReconnectOnOwnerDeath &&
-      crashLogDirectory == null;
+      crashLogDirectories.isEmpty;
 }

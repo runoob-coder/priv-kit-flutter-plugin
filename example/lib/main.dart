@@ -162,10 +162,8 @@ class _MyAppState extends State<MyApp> {
 
   /// Reads the reports privileged processes wrote when they died.
   ///
-  /// The directory itself is configured natively in `MainApp` before Flutter
-  /// starts, because it has to be set before any startup. The scan also covers
-  /// the shared `/data/local/tmp` fallback, which is why it needs a connected
-  /// server.
+  /// Directories are configured natively in `MainApp`; fallback reports are
+  /// readable with or without a connected server.
   Future<void> _readCrashLogs() => _run(() async {
     final reports = await _privKit.readCrashLogs();
     if (reports.isEmpty) {
@@ -634,7 +632,7 @@ class _MyAppState extends State<MyApp> {
                   ),
                   _button(
                     label: l10n.actionCrashLogs,
-                    onPressed: _busy || server == null ? null : _readCrashLogs,
+                    onPressed: _busy ? null : _readCrashLogs,
                   ),
                   _button(
                     label: l10n.actionShutdown,

@@ -64,7 +64,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.18.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.19.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -722,24 +722,26 @@ await privKit.prepareOwnerRestart(passiveReconnectTimeoutMillis: 10_000);
 ```dart
 final config = await privKit.getRuntimeConfig();
 print(config.followDeathDelay); // 默认 10 分钟
-print(config.crashLogDirectory); // 默认 null，即 /data/local/tmp
+print(config.crashLogDirectories); // 默认 []，即只用兜底目录
 
 await privKit.configureRuntime(
   followDeathDelayMillis: 60000, // 只等 1 分钟
   activeReconnectOnOwnerDeath: true,
-  crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
+  crashLogDirectories: [
+    '/data/user/0/com.example/files/crashes',
+    '/sdcard/Android/data/com.example/files/crashes',
+  ],
 );
 ```
 
 省略的字段保持当前值。变更会推送到已连接的服务端，并作用于**下一次** owner
 死亡——已经启动的重连流程会沿用它在 owner 死亡时捕获的值。
 
-`crashLogDirectory` 在初始化阶段设置一次即可，早于任何启动调用。请使用「一个
-App + 一个 Android 用户」独占的目录（例如 Kotlin 侧的
-`getExternalFilesDir("privilege-crashes")`），因为写在那里的报告不会带包名
-标记。`startRoot`、`startAdb` 与外部启动会在启动命令里把该目录交给新进程；
-**手动启动不会**——自 priv-core 0.17.5 起打印出来的命令不再塞环境变量，这类
-服务端要到第一次 owner 握手才拿到目录，之前会写到 `/data/local/tmp`。
+`crashLogDirectories` 需在启动前设置。传入「一个 App + 一个 Android 用户」独占的
+已存在绝对目录，例如 Kotlin 侧的 `File(filesDir, "privilege-crashes")` 与
+`getExternalFilesDir("privilege-crashes")`。priv-core 按顺序尝试，首个成功即停；
+传空列表可清空。`startRoot`、`startAdb` 与外部启动会把列表放进启动命令，
+**手动启动不会**——这类服务端在第一次 owner 握手时才拿到列表。
 
 ## 💥 崩溃日志
 
@@ -755,17 +757,18 @@ for (final report in reports) {
 }
 ```
 
-`readCrashLogs()` 会扫描已配置的 `crashLogDirectory`，以及共享兜底目录
-`/data/local/tmp`——后者还会收到「目录下发之前」写下的报告。全部读取都走文件
-代理，因此**必须有已连接的服务端**。由此产生几点约束：
+`readCrashLogs()` 合并两类来源，按路径去重后倒序返回：
 
-- 只解码 1 MiB 以内的 `priv-crash_*.json`，写了一半的临时文件与无关文件会被
-  忽略。
-- `/data/local/tmp` 由多个 App 与用户共享，展示前请先核对
-  `report.applicationId` 与 `report.userId`。
-- native 崩溃、`SIGKILL`，以及启动配置解析完成前就发生的失败都不会生成文件，
-  这类情况仍然只能看 Logcat。
-- 这些文件不会被自动清理，读完请用 [`fileDelete`](#-文件代理) 自行删除。
+- 已配置的 `crashLogDirectories`（或 `directories:` 参数），通过文件代理扫描；
+  未连接服务端时跳过。
+- `/data/local/tmp/priv-kit/<包名>/<userId>/crashes/` 下本 App 的兜底报告，用
+  App 自身权限读取，**无需连接服务端**。可用 `includeFallbackCrashLogs: false`
+  关闭。
+
+只解码 1 MiB 以内的 `priv-crash_uid<uid>_<时间戳>.json`，忽略 `.json.tmp` 与内容
+损坏的文件。真正的列举失败仍抛 `FILE_ERROR`，只有连接断开才降级跳过。native
+崩溃、`SIGKILL` 与配置解析前的失败不生成文件，只能看 Logcat。文件不会被自动清理，
+读完请用 [`fileDelete`](#-文件代理) 自行删除。
 
 文档：[崩溃日志](https://priv-kit.pages.dev/zh/guide/activation#crash-logs)。
 

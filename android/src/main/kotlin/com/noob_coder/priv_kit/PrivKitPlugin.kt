@@ -202,8 +202,9 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         "followDeathDelayMillis" to PrivilegeConfig.followDeathDelayMillis,
                         "activeReconnectOnOwnerDeath" to
                             PrivilegeConfig.activeReconnectOnOwnerDeath,
-                        "crashLogDirectory" to
-                            PrivilegeConfig.crashLogDirectory?.absolutePath,
+                        // Write order matters, so keep the list ordered.
+                        "crashLogDirectories" to
+                            PrivilegeConfig.crashLogDirectories.map { it.absolutePath },
                     )
                 }
             }
@@ -213,9 +214,8 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     call.argument<Number>("followDeathDelayMillis")?.toLong()
                 val activeReconnectOnOwnerDeath =
                     call.argument<Boolean>("activeReconnectOnOwnerDeath")
-                // Null keeps the current value, matching the other fields: the
-                // directory is set once during initialization and rarely reset.
-                val crashLogDirectory = call.argument<String>("crashLogDirectory")
+                // Null keeps the current list; an empty list clears it.
+                val crashLogDirectories = call.argument<List<*>>("crashLogDirectories")
                 withContext(Dispatchers.IO) {
                     // Omitted fields keep their current value, so read them back
                     // before publishing the complete snapshot.
@@ -225,12 +225,24 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         activeReconnectOnOwnerDeath = activeReconnectOnOwnerDeath
                             ?: PrivilegeConfig.activeReconnectOnOwnerDeath,
                     )
-                    if (crashLogDirectory != null) {
-                        // Must be absolute: priv-core rejects a relative path.
-                        PrivilegeConfig.crashLogDirectory = File(crashLogDirectory)
+                    if (crashLogDirectories != null) {
+                        // The upstream setter rejects relative paths.
+                        PrivilegeConfig.crashLogDirectories = crashLogDirectories.map {
+                            require(it is String) {
+                                "crashLogDirectories must contain only absolute paths"
+                            }
+                            File(it)
+                        }
                     }
                 }
                 null
+            }
+
+            // Blocking I/O with the app's own permissions; no server needed.
+            "readFallbackCrashLogs" -> runAsync(result) {
+                withContext(Dispatchers.IO) {
+                    Privilege.listFallbackCrashLogFiles().mapNotNull(::readFallbackCrashLog)
+                }
             }
 
             "cancelOperation" -> {
@@ -433,6 +445,23 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         )
     }
 
+    /** Returns null for an invalid or unreadable report. */
+    private fun readFallbackCrashLog(file: File): Map<String, Any?>? {
+        if (!FALLBACK_CRASH_LOG_NAME.matches(file.name) || !file.isFile) return null
+        if (file.length() > FALLBACK_CRASH_LOG_MAX_BYTES) return null
+        val bytes = try {
+            file.readBytes()
+        } catch (failure: Exception) {
+            if (failure is CancellationException) throw failure
+            return null
+        }
+        if (bytes.size > FALLBACK_CRASH_LOG_MAX_BYTES) return null
+        return mapOf<String, Any?>(
+            "path" to file.absolutePath,
+            "content" to bytes,
+        )
+    }
+
     private inner class ServerStateStreamHandler : EventChannel.StreamHandler {
         override fun onListen(
             arguments: Any?,
@@ -474,5 +503,12 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         internal const val METHOD_CHANNEL = "priv_kit"
         internal const val SERVER_STATE_CHANNEL = "priv_kit/server_state"
         internal const val STARTUP_LOG_CHANNEL = "priv_kit/startup_log"
+
+        // priv-crash_uid<uid>_<yyyyMMddHHmmss>.json
+        private val FALLBACK_CRASH_LOG_NAME =
+            Regex("priv-crash_uid[0-9]+_[0-9]{14}\\.json")
+
+        // Keep in sync with privilegeCrashLogMaxBytes on the Dart side.
+        private const val FALLBACK_CRASH_LOG_MAX_BYTES = 1024 * 1024
     }
 }

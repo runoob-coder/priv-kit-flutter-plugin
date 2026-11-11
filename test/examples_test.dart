@@ -246,8 +246,12 @@ class _FakePlatform extends PrivKitPlatform {
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
-    String? crashLogDirectory,
+    List<String>? crashLogDirectories,
   }) async {}
+
+  @override
+  Future<List<PrivFallbackCrashLogFile>> readFallbackCrashLogs() =>
+      Future.value(const <PrivFallbackCrashLogFile>[]);
 
   @override
   Future<PrivAdbIdentityInfo> adbGetIdentityInfo({String? adbDeviceName}) =>
@@ -593,11 +597,14 @@ void main() {
       config.followDeathDelayMillis,
       privilegeDefaultFollowDeathDelayMillis,
     );
-    expect(config.crashLogDirectory, isNull);
+    expect(config.crashLogDirectories, isEmpty);
     await privKit.configureRuntime(
       followDeathDelayMillis: 60000,
       activeReconnectOnOwnerDeath: true,
-      crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
+      crashLogDirectories: const <String>[
+        '/data/user/0/com.example/files/crashes',
+        '/sdcard/Android/data/com.example/files/crashes',
+      ],
     );
 
     // Crash logs written by privileged processes.

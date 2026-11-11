@@ -1,11 +1,8 @@
-// Behaviour tests for the crash log bridge added by priv-core 0.17.3.
-//
-// Privileged processes write their own crash reports as UTF-8 JSON; nothing in
-// priv-core scans them, so [PrivKit.readCrashLogs] builds that on top of the
-// file proxy and this file pins down what it skips and how it orders results.
+// Behaviour tests for [PrivKit.readCrashLogs]: ordered directories, fallback
+// reports while disconnected, and report filtering.
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:priv_kit/priv_kit.dart';
@@ -14,10 +11,19 @@ import 'package:priv_kit/priv_kit_platform_interface.dart';
 
 /// Serves a fixed set of files for every path [PrivKit.readCrashLogs] walks.
 class _FakePlatform extends PrivKitPlatform with MockPlatformInterfaceMixin {
-  _FakePlatform(this.files, {this.crashLogDirectory});
+  _FakePlatform(
+    this.files, {
+    this.crashLogDirectories = const <String>[],
+    this.fallbackFiles = const <String, Uint8List>{},
+    this.serverConnected = true,
+    this.walkError,
+  });
 
   final Map<String, Uint8List> files;
-  final String? crashLogDirectory;
+  final List<String> crashLogDirectories;
+  final Map<String, Uint8List> fallbackFiles;
+  final bool serverConnected;
+  final PlatformException? walkError;
 
   /// Every directory handed to [fileWalkStart], in call order.
   final List<String> walked = <String>[];
@@ -25,18 +31,40 @@ class _FakePlatform extends PrivKitPlatform with MockPlatformInterfaceMixin {
   /// The `maxDepth` of each [fileWalkStart] call.
   final List<int?> depths = <int?>[];
 
+  int fallbackReads = 0;
+
   String? _walkedPath;
   String? _openedPath;
   int _offset = 0;
+
+  @override
+  Future<PrivServerInfo?> getServerState() => Future.value(
+    serverConnected
+        ? const PrivServerInfo(uid: 0, pid: 1, protocolVersion: 1)
+        : null,
+  );
 
   @override
   Future<PrivRuntimeConfig> getRuntimeConfig() => Future.value(
     PrivRuntimeConfig(
       followDeathDelayMillis: privilegeDefaultFollowDeathDelayMillis,
       activeReconnectOnOwnerDeath: privilegeDefaultActiveReconnectOnOwnerDeath,
-      crashLogDirectory: crashLogDirectory,
+      crashLogDirectories: crashLogDirectories,
     ),
   );
+
+  @override
+  Future<List<PrivFallbackCrashLogFile>> readFallbackCrashLogs() {
+    fallbackReads++;
+    return Future.value(
+      fallbackFiles.entries
+          .map(
+            (entry) =>
+                PrivFallbackCrashLogFile(path: entry.key, content: entry.value),
+          )
+          .toList(),
+    );
+  }
 
   @override
   Future<void> fileWalkStart(
@@ -53,6 +81,7 @@ class _FakePlatform extends PrivKitPlatform with MockPlatformInterfaceMixin {
 
   @override
   Stream<PrivFileEntry> fileWalkEntries(String operationId) {
+    if (walkError != null) return Stream<PrivFileEntry>.error(walkError!);
     final prefix = '${_walkedPath ?? ''}/';
     return Stream.fromIterable(
       files.entries
@@ -131,8 +160,12 @@ Uint8List _report({
 }
 
 void main() {
-  const appDir = '/sdcard/Android/data/com.example/files/privilege-crashes';
-  const fallback = privilegeCrashLogFallbackDirectory;
+  const appDir = '/data/user/0/com.example/files/privilege-crashes';
+  const externalDir =
+      '/sdcard/Android/data/com.example/files/privilege-crashes';
+  const fallbackDir = '$privilegeCrashLogFallbackRoot/com.example/0/crashes';
+
+  const reportName = 'priv-crash_uid2000_20261008120000.json';
 
   PrivKit kitWith(_FakePlatform platform) {
     PrivKitPlatform.instance = platform;
@@ -193,117 +226,269 @@ void main() {
     expect(log.copyWith(threadName: 'pool-1').threadName, 'pool-1');
   });
 
-  test('readCrashLogs reads every report, newest first', () async {
-    final platform = _FakePlatform(<String, Uint8List>{
-      '$appDir/priv-crash_uid10234_20261008120000.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 1000,
+  test('the 0.19.0 report name pattern accepts only published names', () {
+    expect(privilegeCrashLogFileNamePattern.hasMatch(reportName), isTrue);
+    expect(
+      privilegeCrashLogFileNamePattern.hasMatch('$reportName.tmp'),
+      isFalse,
+    );
+    expect(
+      privilegeCrashLogFileNamePattern.hasMatch(
+        'priv-crash_com.example_u0_uid2000_20261008120000.json',
       ),
-      '$appDir/priv-crash_uid10234_20261008120100.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 3000,
-      ),
-      '$appDir/priv-crash_uid10234_20261008120200.json.tmp': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 9000,
-      ),
-      '$appDir/unrelated.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 8000,
-      ),
-    }, crashLogDirectory: appDir);
-    final kit = kitWith(platform);
-
-    final reports = await kit.readCrashLogs(includeFallbackDirectory: false);
-
-    expect(reports.map((report) => report.crashedAtEpochMillis), [3000, 1000]);
-    expect(platform.walked, [appDir]);
-    // A non-recursive walk is enough: reports are flat files.
-    expect(platform.depths, [1]);
+      isFalse,
+    );
   });
 
-  test('readCrashLogs uses the configured directory as default', () async {
-    final platform = _FakePlatform(<String, Uint8List>{
-      '$appDir/priv-crash_uid10234_20261008120000.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 1000,
-      ),
-      '$fallback/priv-crash_com.example_u0_uid2000_20261008120300.json':
-          _report(applicationId: 'com.example', crashedAtEpochMillis: 2000),
-    }, crashLogDirectory: appDir);
+  test('readCrashLogs scans every configured directory in order', () async {
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '$appDir/$reportName': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 1000,
+        ),
+        '$externalDir/priv-crash_uid2000_20261008120100.json': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 3000,
+        ),
+      },
+      crashLogDirectories: [appDir, externalDir, appDir],
+    );
+    final kit = kitWith(platform);
+
+    final reports = await kit.readCrashLogs(includeFallbackCrashLogs: false);
+
+    expect(reports.map((report) => report.crashedAtEpochMillis), [3000, 1000]);
+    // Duplicates are scanned once, in write order.
+    expect(platform.walked, [appDir, externalDir]);
+    // A non-recursive walk is enough: reports are flat files.
+    expect(platform.depths, [1, 1]);
+    expect(platform.fallbackReads, 0);
+  });
+
+  test('readCrashLogs reads fallback reports while disconnected', () async {
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '$appDir/$reportName': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 1000,
+        ),
+      },
+      crashLogDirectories: [appDir],
+      fallbackFiles: <String, Uint8List>{
+        '$fallbackDir/priv-crash_uid2000_20261008120300.json': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 2000,
+        ),
+      },
+      serverConnected: false,
+    );
     final kit = kitWith(platform);
 
     final reports = await kit.readCrashLogs();
 
-    expect(reports.map((report) => report.crashedAtEpochMillis), [2000, 1000]);
-    expect(platform.walked, [appDir, fallback]);
+    expect(reports.single.crashedAtEpochMillis, 2000);
+    expect(platform.walked, isEmpty);
+    expect(platform.fallbackReads, 1);
   });
 
-  test(
-    'readCrashLogs scans the fallback directory only when unconfigured',
-    () async {
-      final platform = _FakePlatform(<String, Uint8List>{
-        '$fallback/priv-crash_com.example_u0_uid2000_20261008120300.json':
-            _report(applicationId: 'com.example', crashedAtEpochMillis: 2000),
-      });
-      final kit = kitWith(platform);
+  test('readCrashLogs merges configured and fallback reports', () async {
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '$appDir/$reportName': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 1000,
+        ),
+      },
+      crashLogDirectories: [appDir],
+      fallbackFiles: <String, Uint8List>{
+        '$fallbackDir/priv-crash_uid2000_20261008120300.json': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 2000,
+        ),
+      },
+    );
 
-      final reports = await kit.readCrashLogs();
+    final reports = await kitWith(platform).readCrashLogs();
 
-      expect(reports.single.applicationId, 'com.example');
-      expect(platform.walked, [fallback]);
-    },
-  );
+    expect(reports.map((report) => report.crashedAtEpochMillis), [2000, 1000]);
+    expect(platform.walked, [appDir]);
+  });
 
-  test('readCrashLogs honours an explicit directory', () async {
-    final platform = _FakePlatform(<String, Uint8List>{
-      '/custom/priv-crash_uid10234_20261008120000.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 1000,
-      ),
-    }, crashLogDirectory: appDir);
+  test('readCrashLogs de-duplicates paths shared by both sources', () async {
+    final path = '$fallbackDir/$reportName';
+    final bytes = _report(
+      applicationId: 'com.example',
+      crashedAtEpochMillis: 1000,
+    );
+    final platform = _FakePlatform(
+      <String, Uint8List>{path: bytes},
+      crashLogDirectories: [fallbackDir],
+      fallbackFiles: <String, Uint8List>{path: bytes},
+    );
+
+    final reports = await kitWith(platform).readCrashLogs();
+
+    expect(reports, hasLength(1));
+    expect(reports.single.crashedAtEpochMillis, 1000);
+  });
+
+  test('readCrashLogs honours explicit directories', () async {
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '/custom/$reportName': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 1000,
+        ),
+      },
+      crashLogDirectories: [appDir],
+    );
     final kit = kitWith(platform);
 
     final reports = await kit.readCrashLogs(
-      directory: '/custom',
-      includeFallbackDirectory: false,
+      directories: const <String>['/custom'],
+      includeFallbackCrashLogs: false,
     );
 
     expect(reports, hasLength(1));
     expect(platform.walked, ['/custom']);
   });
 
-  test('readCrashLogs skips reports above the size limit', () async {
-    final oversized = _report(
+  test('readCrashLogs skips temporary, unrelated and legacy names', () async {
+    final bytes = _report(
       applicationId: 'com.example',
-      crashedAtEpochMillis: 5000,
+      crashedAtEpochMillis: 1000,
+    );
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '$appDir/$reportName': bytes,
+        '$appDir/$reportName.tmp': bytes,
+        '$appDir/unrelated.json': bytes,
+        '$appDir/priv-crash_com.example_u0_uid2000_20261008120000.json': bytes,
+      },
+      crashLogDirectories: [appDir],
+      fallbackFiles: <String, Uint8List>{
+        '$fallbackDir/$reportName.tmp': bytes,
+        '$fallbackDir/legacy.json': bytes,
+        '$fallbackDir/priv-crash_uid2000_20261008120400.json': _report(
+          applicationId: 'com.example',
+          crashedAtEpochMillis: 4000,
+        ),
+      },
+    );
+
+    final reports = await kitWith(platform).readCrashLogs();
+
+    expect(reports.map((report) => report.crashedAtEpochMillis), [4000, 1000]);
+  });
+
+  test('readCrashLogs skips reports above the size limit', () async {
+    final small = _report(
+      applicationId: 'com.example',
+      crashedAtEpochMillis: 1000,
     );
     final padded = Uint8List(privilegeCrashLogMaxBytes + 1)
-      ..setRange(0, oversized.length, oversized);
-    final platform = _FakePlatform(<String, Uint8List>{
-      '$appDir/priv-crash_uid10234_20261008120000.json': _report(
-        applicationId: 'com.example',
-        crashedAtEpochMillis: 1000,
-      ),
-      '$appDir/priv-crash_uid10234_20261008120100.json': padded,
-    }, crashLogDirectory: appDir);
-    final kit = kitWith(platform);
+      ..setRange(0, small.length, small);
+    final platform = _FakePlatform(
+      <String, Uint8List>{
+        '$appDir/$reportName': small,
+        '$appDir/priv-crash_uid2000_20261008120100.json': padded,
+      },
+      crashLogDirectories: [appDir],
+      fallbackFiles: <String, Uint8List>{
+        '$fallbackDir/priv-crash_uid2000_20261008120200.json': padded,
+      },
+    );
 
-    final reports = await kit.readCrashLogs(includeFallbackDirectory: false);
+    final reports = await kitWith(platform).readCrashLogs();
 
     expect(reports.map((report) => report.crashedAtEpochMillis), [1000]);
   });
+
+  test(
+    'readCrashLogs skips malformed reports without hiding the others',
+    () async {
+      final platform = _FakePlatform(
+        <String, Uint8List>{
+          '$appDir/$reportName': Uint8List.fromList(utf8.encode('{not json')),
+        },
+        crashLogDirectories: [appDir],
+        fallbackFiles: <String, Uint8List>{
+          '$fallbackDir/priv-crash_uid2000_20261008120500.json': _report(
+            applicationId: 'com.example',
+            crashedAtEpochMillis: 5000,
+          ),
+        },
+      );
+
+      final reports = await kitWith(platform).readCrashLogs();
+
+      expect(reports.map((report) => report.crashedAtEpochMillis), [5000]);
+    },
+  );
 
   test('readCrashLogs returns nothing when all scans are disabled', () async {
     final platform = _FakePlatform(<String, Uint8List>{});
     final kit = kitWith(platform);
 
     final reports = await kit.readCrashLogs(
-      directory: '',
-      includeFallbackDirectory: false,
+      directories: const <String>[],
+      includeFallbackCrashLogs: false,
     );
 
     expect(reports, isEmpty);
     expect(platform.walked, isEmpty);
+    expect(platform.fallbackReads, 0);
+  });
+
+  test('readCrashLogs propagates a real directory listing failure', () async {
+    final platform = _FakePlatform(
+      <String, Uint8List>{},
+      crashLogDirectories: [appDir],
+      walkError: PlatformException(code: PrivKitErrorCode.file),
+    );
+
+    await expectLater(
+      kitWith(platform).readCrashLogs(includeFallbackCrashLogs: false),
+      throwsA(
+        isA<PrivKitException>().having(
+          (error) => error.code,
+          'code',
+          PrivKitErrorCode.file,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'readCrashLogs keeps fallback reports when the server dies mid-walk',
+    () async {
+      final platform = _FakePlatform(
+        <String, Uint8List>{},
+        crashLogDirectories: [appDir],
+        fallbackFiles: <String, Uint8List>{
+          '$fallbackDir/priv-crash_uid2000_20261008120600.json': _report(
+            applicationId: 'com.example',
+            crashedAtEpochMillis: 6000,
+          ),
+        },
+        walkError: PlatformException(code: PrivKitErrorCode.serverUnavailable),
+      );
+
+      final reports = await kitWith(platform).readCrashLogs();
+
+      expect(reports.single.crashedAtEpochMillis, 6000);
+    },
+  );
+
+  test('configureRuntime rejects relative crash log directories', () {
+    final kit = kitWith(_FakePlatform(<String, Uint8List>{}));
+
+    expect(
+      () => kit.configureRuntime(
+        crashLogDirectories: const <String>['relative/crashes'],
+      ),
+      throwsArgumentError,
+    );
   });
 }

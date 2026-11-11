@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priv_kit/priv_kit.dart';
@@ -333,39 +335,46 @@ void main() {
     expect(config.isDefault, isFalse);
   });
 
-  test('getRuntimeConfig decodes the crash log directory', () async {
+  test('getRuntimeConfig decodes the ordered crash log directories', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           log.add(methodCall);
           return <String, Object?>{
             'followDeathDelayMillis': 60000,
             'activeReconnectOnOwnerDeath': true,
-            'crashLogDirectory':
-                '/sdcard/Android/data/com.example/files/crashes',
+            'crashLogDirectories': <String>[
+              '/data/user/0/com.example/files/crashes',
+              '/sdcard/Android/data/com.example/files/crashes',
+            ],
           };
         });
 
     final config = await platform.getRuntimeConfig();
-    expect(
-      config.crashLogDirectory,
+    expect(config.crashLogDirectories, <String>[
+      '/data/user/0/com.example/files/crashes',
       '/sdcard/Android/data/com.example/files/crashes',
-    );
+    ]);
     expect(config.isDefault, isFalse);
   });
 
-  test('getRuntimeConfig reports a missing crash log directory', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          log.add(methodCall);
-          return <String, Object?>{
-            'followDeathDelayMillis': 60000,
-            'activeReconnectOnOwnerDeath': true,
-            'crashLogDirectory': null,
-          };
-        });
+  test(
+    'getRuntimeConfig tolerates a missing crash log directory list',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            log.add(methodCall);
+            return <String, Object?>{
+              'followDeathDelayMillis': 60000,
+              'activeReconnectOnOwnerDeath': true,
+              'crashLogDirectories': null,
+            };
+          });
 
-    expect((await platform.getRuntimeConfig()).crashLogDirectory, isNull);
-  });
+      final config = await platform.getRuntimeConfig();
+      expect(config.crashLogDirectories, isEmpty);
+      expect(config.isDefault, isFalse);
+    },
+  );
 
   test('configureRuntime forwards both fields', () async {
     await platform.configureRuntime(
@@ -386,16 +395,64 @@ void main() {
     expect(call.arguments['followDeathDelayMillis'], isNull);
   });
 
-  test('configureRuntime forwards the crash log directory', () async {
-    await platform.configureRuntime(
-      crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
-    );
+  test('configureRuntime forwards the crash log directories', () async {
+    const directories = <String>[
+      '/data/user/0/com.example/files/crashes',
+      '/sdcard/Android/data/com.example/files/crashes',
+    ];
+    await platform.configureRuntime(crashLogDirectories: directories);
 
     final call = log.singleWhere((c) => c.method == 'configureRuntime');
-    expect(
-      call.arguments['crashLogDirectory'],
-      '/sdcard/Android/data/com.example/files/crashes',
-    );
+    expect(call.arguments['crashLogDirectories'], directories);
+    expect(call.arguments.containsKey('crashLogDirectory'), isFalse);
+  });
+
+  test(
+    'configureRuntime forwards an empty list to clear the directories',
+    () async {
+      await platform.configureRuntime(crashLogDirectories: const <String>[]);
+
+      final call = log.singleWhere((c) => c.method == 'configureRuntime');
+      expect(call.arguments['crashLogDirectories'], isEmpty);
+    },
+  );
+
+  test('readFallbackCrashLogs decodes the native reply', () async {
+    final bytes = Uint8List.fromList(utf8.encode('{"schemaVersion":1}'));
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          if (methodCall.method == 'readFallbackCrashLogs') {
+            return <Object?>[
+              <String, Object?>{
+                'path': '/a/priv-crash_uid2000_1.json',
+                'content': bytes,
+              },
+              <String, Object?>{
+                'path': '/b/priv-crash_uid2000_2.json',
+                'content': bytes,
+              },
+              null,
+            ];
+          }
+          return null;
+        });
+
+    final files = await platform.readFallbackCrashLogs();
+
+    expect(log.single.method, 'readFallbackCrashLogs');
+    expect(files.map((file) => file.path), <String>[
+      '/a/priv-crash_uid2000_1.json',
+      '/b/priv-crash_uid2000_2.json',
+    ]);
+    expect(files.first.content, bytes);
+  });
+
+  test('readFallbackCrashLogs treats a null reply as no reports', () async {
+    final files = await platform.readFallbackCrashLogs();
+
+    expect(files, isEmpty);
+    expect(log.single.method, 'readFallbackCrashLogs');
   });
 
   test('getDeniedServerPermissions', () async {

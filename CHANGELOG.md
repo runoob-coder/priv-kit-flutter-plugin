@@ -1,3 +1,26 @@
+## 0.19.0
+
+### Upgrade priv-core 0.18.0 → 0.19.0
+
+**Breaking:** `PrivRuntimeConfig.crashLogDirectory` → `crashLogDirectories`
+(`List<String>`); `configureRuntime` takes the same list. `null` keeps the
+current value, an empty list clears it, and paths must be absolute.
+
+priv-core now writes to the first usable directory, falling back to
+`/data/local/tmp/priv-kit/<applicationId>/<userId>/crashes/` instead of the
+shared flat `/data/local/tmp`. Names are uniformly
+`priv-crash_uid<uid>_<timestamp>.json`.
+
+`readCrashLogs()` merges configured directories (file proxy, skipped while
+disconnected) with fallback reports read through the new
+`readFallbackCrashLogs` bridge, so it works offline. It takes `directories:`
+and `includeFallbackCrashLogs:` instead of `directory:` /
+`includeFallbackDirectory:`, de-duplicates by path, sorts newest first and
+skips oversized or malformed files.
+
+Also breaking: `privilegeCrashLogFallbackDirectory` →
+`privilegeCrashLogFallbackRoot`. New model: `PrivFallbackCrashLogFile`.
+
 ## 0.18.0
 
 ### Upgrade priv-core 0.17.9 → 0.18.0

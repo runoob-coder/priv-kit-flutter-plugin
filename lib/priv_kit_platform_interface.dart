@@ -7,6 +7,7 @@ import 'src/models/adb.dart';
 import 'src/models/binder.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
+import 'src/models/crash_log.dart';
 import 'src/models/external_startup.dart';
 import 'src/models/file.dart';
 import 'src/models/server_info.dart';
@@ -443,16 +444,22 @@ abstract class PrivKitPlatform extends PlatformInterface {
 
   /// Replaces the owner-death reconnect policy.
   ///
-  /// Omitted fields keep their current value. The change is pushed to the
-  /// connected server and applies to the next owner death. Set
-  /// [crashLogDirectory] during application initialization, before reading
-  /// [getNativeStarterCommand] or starting the server.
+  /// Omitted fields keep their current value; an empty [crashLogDirectories]
+  /// clears the list. Set it before any startup call.
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
-    String? crashLogDirectory,
+    List<String>? crashLogDirectories,
   }) {
     throw UnimplementedError('configureRuntime() has not been implemented.');
+  }
+
+  /// Reads this app's fallback reports with its own permissions, so it works
+  /// without a connected server. The native side filters name, type and size.
+  Future<List<PrivFallbackCrashLogFile>> readFallbackCrashLogs() {
+    throw UnimplementedError(
+      'readFallbackCrashLogs() has not been implemented.',
+    );
   }
 
   /// ADB identity of this app, including its public key fingerprint.

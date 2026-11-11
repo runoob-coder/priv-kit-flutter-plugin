@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Build
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import priv.kit.core.PrivilegeConfig
+import java.io.File
 
 /**
  * Releases the hidden API restrictions that the Privileged Server relies on.
@@ -21,17 +22,12 @@ class MainApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Where the server and every dedicated UserService write their own
-        // crash reports. Set it once before any startup: the start calls managed
-        // by priv-core hand the directory to the new process, while a manually
-        // started server learns it at its owner handshake.
-        //
-        // This directory belongs to one app and Android user, which is what
-        // PrivilegeConfig requires. When storage is unavailable the result is
-        // null and priv-core falls back to `/data/local/tmp`, where only the
-        // server itself can read the report back.
-        getExternalFilesDir(CRASH_LOG_DIRECTORY)
-            ?.let { PrivilegeConfig.crashLogDirectory = it }
+        // Crash-report directories, in write order. Set before any startup;
+        // external storage may be unavailable.
+        PrivilegeConfig.crashLogDirectories = listOfNotNull(
+            File(filesDir, CRASH_LOG_DIRECTORY).apply { mkdirs() },
+            getExternalFilesDir(CRASH_LOG_DIRECTORY),
+        )
     }
 
     private companion object {

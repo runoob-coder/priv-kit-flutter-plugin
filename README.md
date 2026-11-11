@@ -71,7 +71,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.18.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.19.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -765,12 +765,15 @@ crash reports:
 ```dart
 final config = await privKit.getRuntimeConfig();
 print(config.followDeathDelay); // default: 10 minutes
-print(config.crashLogDirectory); // default: null, i.e. /data/local/tmp
+print(config.crashLogDirectories); // default: [], i.e. fallback only
 
 await privKit.configureRuntime(
   followDeathDelayMillis: 60000, // wait 1 minute for the owner to come back
   activeReconnectOnOwnerDeath: true,
-  crashLogDirectory: '/sdcard/Android/data/com.example/files/crashes',
+  crashLogDirectories: [
+    '/data/user/0/com.example/files/crashes',
+    '/sdcard/Android/data/com.example/files/crashes',
+  ],
 );
 ```
 
@@ -778,14 +781,13 @@ Omitted fields keep their current value. Changes are pushed to the connected
 server and apply to the **next** owner death — a reconnect flow that has
 already started keeps the values it captured when the owner died.
 
-Set `crashLogDirectory` once during startup, before any startup call. Use one
-directory per app and Android user — for example the Kotlin-side
-`getExternalFilesDir("privilege-crashes")` — because reports written there are
-not tagged with an application id. `startRoot`, `startAdb` and the external
-startup calls pass it to the new process in its launch command; **manual
-startup does not**, since priv-core 0.17.5 keeps the printed command clean —
-such a server learns the directory at its first owner handshake and writes to
-`/data/local/tmp` before that.
+Set `crashLogDirectories` before any startup call. Pass existing absolute
+directories owned by one app and Android user, e.g. Kotlin's
+`File(filesDir, "privilege-crashes")` and
+`getExternalFilesDir("privilege-crashes")`. priv-core tries them in order and
+stops at the first successful write; an empty list clears them. `startRoot`,
+`startAdb` and external startup pass the list in the launch command; **manual
+startup does not** — such a server learns it at the first owner handshake.
 
 ## 💥 Crash logs
 
@@ -802,19 +804,21 @@ for (final report in reports) {
 }
 ```
 
-`readCrashLogs()` scans the configured `crashLogDirectory` and the shared
-fallback `/data/local/tmp`, which also catches reports written before the
-directory reached the server. Everything goes through the file proxy, so **a
-server has to be connected**. Given that:
+`readCrashLogs()` merges two sources, de-duplicates by path and returns the
+newest first:
 
-- Only `priv-crash_*.json` files below 1 MiB are decoded, so half-written
-  temporary files and unrelated output are ignored.
-- `/data/local/tmp` is shared between apps and users, so check
-  `report.applicationId` and `report.userId` before showing anything.
-- Native crashes, `SIGKILL` and failures before launch configuration is parsed
-  produce no file at all: Logcat remains the diagnostic path there.
-- Nothing deletes these files. Remove them yourself with
-  [`fileDelete`](#-file-proxy) once you have read them.
+- Configured `crashLogDirectories` (or `directories:`), scanned via the file
+  proxy. Skipped when no server is connected.
+- This app's fallback reports under
+  `/data/local/tmp/priv-kit/<applicationId>/<userId>/crashes/`, read with the
+  app's own permissions — **no server needed**. Disable with
+  `includeFallbackCrashLogs: false`.
+
+Only `priv-crash_uid<uid>_<timestamp>.json` files below 1 MiB are decoded;
+`.json.tmp` and malformed files are skipped. Real listing failures still throw
+`FILE_ERROR`; only a lost connection is downgraded. Native crashes, `SIGKILL`
+and failures before config parsing leave no file — use Logcat. Nothing deletes
+these files: remove them with [`fileDelete`](#-file-proxy) after reading.
 
 Docs: [Crash logs](https://priv-kit.pages.dev/guide/activation#crash-logs).
 

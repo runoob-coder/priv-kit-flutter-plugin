@@ -8,6 +8,7 @@ import 'src/models/adb.dart';
 import 'src/models/binder.dart';
 import 'src/models/command.dart';
 import 'src/models/config.dart';
+import 'src/models/crash_log.dart';
 import 'src/models/external_startup.dart';
 import 'src/models/file.dart';
 import 'src/models/permission.dart';
@@ -435,12 +436,24 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
-    String? crashLogDirectory,
+    List<String>? crashLogDirectories,
   }) => methodChannel.invokeMethod<void>('configureRuntime', <String, Object?>{
     'followDeathDelayMillis': followDeathDelayMillis,
     'activeReconnectOnOwnerDeath': activeReconnectOnOwnerDeath,
-    'crashLogDirectory': crashLogDirectory,
+    'crashLogDirectories': crashLogDirectories,
   });
+
+  @override
+  Future<List<PrivFallbackCrashLogFile>> readFallbackCrashLogs() async {
+    final reply = await methodChannel.invokeListMethod<dynamic>(
+      'readFallbackCrashLogs',
+    );
+    if (reply == null) return const <PrivFallbackCrashLogFile>[];
+    return reply
+        .whereType<Map<dynamic, dynamic>>()
+        .map(PrivFallbackCrashLogFile.fromMap)
+        .toList(growable: false);
+  }
 
   @override
   Future<PrivAdbIdentityInfo> adbGetIdentityInfo({

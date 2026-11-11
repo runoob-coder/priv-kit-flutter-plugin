@@ -531,78 +531,125 @@ class PrivKit {
   /// connected server and applies to the **next** owner death: a reconnect flow
   /// that already started keeps the values it captured when the owner died.
   ///
-  /// [crashLogDirectory] must be absolute and cover only this app and Android
-  /// user, for example the value of `getExternalFilesDir("privilege-crashes")`.
-  /// Set it once during application initialization, before any startup. `null`
-  /// keeps the directory unchanged.
+  /// [crashLogDirectories] holds existing absolute directories, each owned by
+  /// one app and Android user. priv-core stops at the first successful write.
+  /// Set it before any startup call; `null` keeps the current list, an empty
+  /// list clears it.
   ///
-  /// [startRoot], [startAdb] and the two `externalStartupRun*` calls hand it to
-  /// the new process in its launch command, so those report crashes from their
-  /// very first lines. Manual startup does not: the command printed by
-  /// [getNativeStarterCommand] omits the directory, and such a server writes to
-  /// `/data/local/tmp` until the owner handshake delivers it.
+  /// [startRoot], [startAdb] and the `externalStartupRun*` calls pass the list
+  /// in the launch command; [getNativeStarterCommand] does not, so a manually
+  /// started server learns it at the first owner handshake.
   Future<void> configureRuntime({
     int? followDeathDelayMillis,
     bool? activeReconnectOnOwnerDeath,
-    String? crashLogDirectory,
-  }) => _guard(
-    () => _platform.configureRuntime(
-      followDeathDelayMillis: followDeathDelayMillis,
-      activeReconnectOnOwnerDeath: activeReconnectOnOwnerDeath,
-      crashLogDirectory: crashLogDirectory,
-    ),
-  );
-
-  /// Reads the crash reports written by privileged processes.
-  ///
-  /// Scans [directory], defaulting to the [PrivRuntimeConfig.crashLogDirectory]
-  /// reported by [getRuntimeConfig], and — unless [includeFallbackDirectory] is
-  /// false — also [privilegeCrashLogFallbackDirectory]. Both always matter: the
-  /// fallback takes every report written before the directory was configured or
-  /// before a manually started server completed its owner handshake. Reports are
-  /// sorted newest first.
-  ///
-  /// Every scan runs through the file proxy, so a Privileged Server has to be
-  /// connected; an ordinary app cannot list the shared fallback directory. The
-  /// fallback is shared between apps and users, so filter by
-  /// [PrivCrashLog.applicationId] and [PrivCrashLog.userId] when it matters.
-  ///
-  /// Only `priv-crash_*.json` files below [privilegeCrashLogMaxBytes] are
-  /// decoded. Cleanup belongs to the caller: priv-core never deletes a report.
-  /// Fails with [PrivKitErrorCode.file] when a directory cannot be listed.
-  Future<List<PrivCrashLog>> readCrashLogs({
-    String? directory,
-    bool includeFallbackDirectory = true,
-  }) async {
-    final configured =
-        directory ?? (await getRuntimeConfig()).crashLogDirectory;
-    final directories = <String>{
-      if (configured != null && configured.isNotEmpty) configured,
-      if (includeFallbackDirectory) privilegeCrashLogFallbackDirectory,
-    };
-    final reports = <PrivCrashLog>[];
-    await _guard(() async {
-      for (final current in directories) {
-        await for (final entry in fileWalk(current, maxDepth: 1)) {
-          if (!entry.name.startsWith(privilegeCrashLogFilePrefix) ||
-              !entry.name.endsWith(privilegeCrashLogFileSuffix)) {
-            continue;
-          }
-          if ((entry.metadata?.sizeBytes ?? 0) > privilegeCrashLogMaxBytes) {
-            continue;
-          }
-          final json = jsonDecode(
-            utf8.decode(await fileReadAllBytes(entry.absolutePath)),
+    List<String>? crashLogDirectories,
+  }) {
+    if (crashLogDirectories != null) {
+      for (final directory in crashLogDirectories) {
+        if (!directory.startsWith('/')) {
+          throw ArgumentError.value(
+            directory,
+            'crashLogDirectories',
+            'Every crash log directory must be an absolute path',
           );
-          if (json is! Map) continue;
-          reports.add(PrivCrashLog.fromJson(json));
         }
       }
-    });
-    reports.sort(
-      (a, b) => b.crashedAtEpochMillis.compareTo(a.crashedAtEpochMillis),
+    }
+    return _guard(
+      () => _platform.configureRuntime(
+        followDeathDelayMillis: followDeathDelayMillis,
+        activeReconnectOnOwnerDeath: activeReconnectOnOwnerDeath,
+        crashLogDirectories: crashLogDirectories,
+      ),
     );
+  }
+
+  /// Reads crash reports, newest first. Merges and de-duplicates by path:
+  ///
+  /// - Configured [PrivRuntimeConfig.crashLogDirectories] (or [directories]),
+  ///   scanned via the file proxy; skipped when no server is connected.
+  /// - This app's fallback reports, read with its own permissions even while
+  ///   disconnected, unless [includeFallbackCrashLogs] is false.
+  ///
+  /// Only names matching [privilegeCrashLogFileNamePattern] and smaller than
+  /// [privilegeCrashLogMaxBytes] are decoded; malformed reports are skipped.
+  /// A real listing failure still throws [PrivKitErrorCode.file]. Cleanup
+  /// belongs to the caller.
+  Future<List<PrivCrashLog>> readCrashLogs({
+    List<String>? directories,
+    bool includeFallbackCrashLogs = true,
+  }) async {
+    final configured =
+        directories ?? (await getRuntimeConfig()).crashLogDirectories;
+    final byPath = <String, PrivCrashLog>{};
+
+    // Fallback reports need no server.
+    if (includeFallbackCrashLogs) {
+      await _guard(() async {
+        for (final file in await _platform.readFallbackCrashLogs()) {
+          final report = _decodeCrashLogFile(file.path, file.content);
+          if (report != null) byPath[file.path] = report;
+        }
+      });
+    }
+
+    // Configured directories: the file proxy needs a connected server.
+    final scanDirectories = configured.where((d) => d.isNotEmpty).toSet();
+    if (scanDirectories.isNotEmpty && await getServerState() != null) {
+      try {
+        await _guard(() async {
+          for (final current in scanDirectories) {
+            await for (final entry in fileWalk(current, maxDepth: 1)) {
+              if (!privilegeCrashLogFileNamePattern.hasMatch(entry.name)) {
+                continue;
+              }
+              if ((entry.metadata?.sizeBytes ?? 0) >
+                  privilegeCrashLogMaxBytes) {
+                continue;
+              }
+              final report = _decodeCrashLogFile(
+                entry.absolutePath,
+                await fileReadAllBytes(entry.absolutePath),
+                name: entry.name,
+              );
+              if (report != null) byPath[entry.absolutePath] = report;
+            }
+          }
+        });
+      } on PrivKitException catch (error) {
+        // A lost connection keeps the fallback reports; other errors do not.
+        if (error.code != PrivKitErrorCode.serverUnavailable &&
+            error.code != PrivKitErrorCode.binderDied) {
+          rethrow;
+        }
+      }
+    }
+
+    final reports = byPath.values.toList()
+      ..sort(
+        (a, b) => b.crashedAtEpochMillis.compareTo(a.crashedAtEpochMillis),
+      );
     return reports;
+  }
+
+  /// Returns null for a bad name, oversized or malformed report.
+  PrivCrashLog? _decodeCrashLogFile(
+    String path,
+    List<int> bytes, {
+    String? name,
+  }) {
+    final fileName = name ?? path.split('/').last;
+    if (!privilegeCrashLogFileNamePattern.hasMatch(fileName)) return null;
+    if (bytes.length > privilegeCrashLogMaxBytes) return null;
+    try {
+      final json = jsonDecode(utf8.decode(bytes));
+      if (json is! Map) return null;
+      return PrivCrashLog.fromJson(json);
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    }
   }
 
   /// The device-side shell command that starts the native starter.
@@ -611,8 +658,8 @@ class PrivKit {
   /// The starter only runs as root (0), system (1000) or shell (2000).
   ///
   /// The command deliberately carries no launch configuration: a server started
-  /// manually picks [PrivRuntimeConfig.crashLogDirectory] up at its first owner
-  /// handshake, so it reports early crashes to `/data/local/tmp`.
+  /// manually picks [PrivRuntimeConfig.crashLogDirectories] up at its first
+  /// owner handshake, so it reports early crashes to its fallback subtree.
   Future<String> getNativeStarterCommand() =>
       _guard(_platform.getNativeStarterCommand);
 

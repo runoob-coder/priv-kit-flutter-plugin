@@ -1,13 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'crash_log.freezed.dart';
 
-/// Directory priv-core falls back to when
-/// [PrivRuntimeConfig.crashLogDirectory] is not set.
-///
-/// Reading it generally needs a connected Privileged Server, and its files may
-/// belong to another app or Android user.
-const String privilegeCrashLogFallbackDirectory = '/data/local/tmp';
+/// Fallback storage root. Reports live under
+/// `<root>/<applicationId>/<userId>/crashes/`, with an `index.txt` used when
+/// the directory cannot be listed.
+const String privilegeCrashLogFallbackRoot = '/data/local/tmp/priv-kit';
 
 /// Prefix of the report filenames written by priv-core.
 const String privilegeCrashLogFilePrefix = 'priv-crash_';
@@ -18,6 +18,12 @@ const String privilegeCrashLogFilePrefix = 'priv-crash_';
 /// it has been synced, so an interrupted write can leave a temporary file
 /// behind. Both here and upstream, only `.json` files are read.
 const String privilegeCrashLogFileSuffix = '.json';
+
+/// Report names: `priv-crash_uid<uid>_<yyyyMMddHHmmss>.json`.
+/// Rejects `.json.tmp` and legacy long names.
+final RegExp privilegeCrashLogFileNamePattern = RegExp(
+  r'^priv-crash_uid[0-9]+_[0-9]{14}\.json$',
+);
 
 /// Largest report the plugin reads, in bytes: 1 MiB.
 const int privilegeCrashLogMaxBytes = 1024 * 1024;
@@ -31,17 +37,33 @@ const String privilegeCrashProcessTypeServer = 'server';
 /// Value of [PrivCrashLog.processType] for a dedicated UserService process.
 const String privilegeCrashProcessTypeUserService = 'userService';
 
+/// A fallback report read with the app's own permissions, available even while
+/// disconnected. The native side has already filtered name, type and size.
+class PrivFallbackCrashLogFile {
+  const PrivFallbackCrashLogFile({required this.path, required this.content});
+
+  /// Absolute path of the report inside the app's fallback subtree.
+  final String path;
+
+  /// UTF-8 JSON bytes of the report, at most [privilegeCrashLogMaxBytes].
+  final Uint8List content;
+
+  /// Decodes one entry of the native `readFallbackCrashLogs` reply.
+  factory PrivFallbackCrashLogFile.fromMap(Map<dynamic, dynamic> map) =>
+      PrivFallbackCrashLogFile(
+        path: map['path'] as String? ?? '',
+        content: map['content'] as Uint8List? ?? Uint8List(0),
+      );
+}
+
 /// One fatal Java/Kotlin exception recorded by a privileged process.
 ///
-/// Mirrors `priv.kit.core.PrivilegeCrashLog`. The server and every dedicated
-/// UserService install an uncaught exception handler once their launch
-/// configuration has been parsed: the report is written as UTF-8 JSON next to
-/// the configured crash log directory, or into
-/// [privilegeCrashLogFallbackDirectory] when the write fails. Nothing deletes
-/// these files, so the host owns cleanup.
+/// Mirrors `priv.kit.core.PrivilegeCrashLog`. Written as UTF-8 JSON into the
+/// first usable configured directory, or [privilegeCrashLogFallbackRoot] when
+/// all writes fail. The host owns cleanup.
 ///
-/// Native crashes, `SIGKILL` and anything thrown before configuration parsing
-/// never produce a report: Logcat stays the fallback for those.
+/// Native crashes, `SIGKILL` and failures before configuration parsing produce
+/// no report: Logcat is the fallback.
 @freezed
 abstract class PrivCrashLog with _$PrivCrashLog {
   const factory PrivCrashLog({
