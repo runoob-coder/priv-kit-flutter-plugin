@@ -1,11 +1,12 @@
 // This is a basic Flutter widget test for the Material + i18n example.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import '../lib/main.dart';
+import 'package:priv_kit_example/main.dart';
 
 void main() {
-  testWidgets('renders the Material demo shell with English strings',
-      (WidgetTester tester) async {
+  testWidgets('renders the Material demo shell with English strings', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(locale: Locale('en')));
     await tester.pumpAndSettle();
 
@@ -17,8 +18,9 @@ void main() {
     expect(find.byType(FilledButton), findsWidgets);
   });
 
-  testWidgets('localizes to Chinese when the locale is pinned to zh',
-      (WidgetTester tester) async {
+  testWidgets('localizes to Chinese when the locale is pinned to zh', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(locale: Locale('zh')));
     await tester.pumpAndSettle();
 
@@ -27,8 +29,9 @@ void main() {
     expect(find.text('Start as Root'), findsNothing);
   });
 
-  testWidgets('tapping the language button switches EN <-> ZH',
-      (WidgetTester tester) async {
+  testWidgets('tapping the language button switches EN <-> ZH', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(locale: Locale('en')));
     await tester.pumpAndSettle();
     expect(find.text('Start as Root'), findsOneWidget);
@@ -41,8 +44,9 @@ void main() {
     expect(find.text('Start as Root'), findsNothing);
   });
 
-  testWidgets('log button opens a dialog that can clear logs',
-      (WidgetTester tester) async {
+  testWidgets('log button opens a dialog that can clear logs', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const MyApp(locale: Locale('zh')));
     await tester.pumpAndSettle();
 
