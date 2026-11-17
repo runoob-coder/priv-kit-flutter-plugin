@@ -53,7 +53,7 @@ internal class DemoBinderBridge(
                     result.error("INVALID_ARGUMENT", "serviceName is required", null)
                     return
                 }
-                val sourceName = call.argument<String>("source") ?: "CURRENT_PROCESS"
+                val sourceName = call.argument<String>("source") ?: "REMOTE_PROCESS"
                 val args = call.argument<List<String>>("args").orEmpty()
                 scope.launch {
                     try {

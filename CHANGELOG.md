@@ -1,3 +1,8 @@
+## 0.22.1
+
+Binder lookups now default to `remoteProcess`, matching priv-core. Pass
+`currentProcess` explicitly for an app-process lookup.
+
 ## 0.22.0
 
 ### Upgrade priv-core 0.19.0 → 0.22.0

@@ -106,14 +106,14 @@ class _FakePlatform extends PrivKitPlatform {
   @override
   Future<bool> binderHasSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
     int? userServiceHandle,
   }) => Future.value(true);
 
   @override
   Future<int?> binderFromSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
     int? userServiceHandle,
   }) => Future.value(1);
 

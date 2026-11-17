@@ -1131,7 +1131,7 @@ class _BinderPanel extends StatefulWidget {
 class _BinderPanelState extends State<_BinderPanel> {
   final _serviceName = TextEditingController(text: 'activity');
   final _dumpArgs = TextEditingController();
-  var _remoteProcess = false;
+  var _remoteProcess = true;
 
   @override
   void dispose() {

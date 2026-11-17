@@ -640,6 +640,8 @@ await privKit.binderFromSystemService(
 );
 ```
 
+默认是 `remoteProcess`；需要本进程查找时显式传 `currentProcess`。
+
 - `currentProcess` —— 在本 App 进程内通过 `ServiceManager` 查找。
 - `remoteProcess` —— 在已连接的远端进程内查找：不传 `userServiceHandle` 时是
   Privileged Server，传入时是指定的 UserService 进程。只对 `shell` 或 root

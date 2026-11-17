@@ -13,7 +13,7 @@ enum PrivBinderServiceSource {
   /// Looked up through `ServiceManager` in this app's own process.
   currentProcess('CURRENT_PROCESS'),
 
-  /// Looked up inside the connected remote process.
+  /// Looked up inside the connected remote process; the default.
   ///
   /// Without a `userServiceHandle` this is the Privileged Server; with one it
   /// is the selected UserService process. Use it for services that are only

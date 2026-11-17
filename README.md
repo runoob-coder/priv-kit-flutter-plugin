@@ -672,6 +672,8 @@ await privKit.binderFromSystemService(
 );
 ```
 
+Defaults to `remoteProcess`; pass `currentProcess` explicitly for an app-process lookup.
+
 - `currentProcess` — through `ServiceManager` in your own process.
 - `remoteProcess` — inside the connected remote process: the Privileged Server,
   or a selected UserService process when `userServiceHandle` is supplied. Use

@@ -223,11 +223,13 @@ abstract class PrivKitPlatform extends PlatformInterface {
 
   /// Whether [serviceName] can be resolved from [source].
   ///
+  /// [source] defaults to [PrivBinderServiceSource.remoteProcess].
+  ///
   /// [userServiceHandle] forwards the lookup through a bound UserService
   /// connection, as returned by [bindUserService].
   Future<bool> binderHasSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
     int? userServiceHandle,
   }) {
     throw UnimplementedError(
@@ -239,6 +241,8 @@ abstract class PrivKitPlatform extends PlatformInterface {
   ///
   /// Returns `null` when the service is not available from [source].
   ///
+  /// [source] defaults to [PrivBinderServiceSource.remoteProcess].
+  ///
   /// [userServiceHandle] forwards both the lookup and the wrapper's
   /// transactions through a bound UserService connection.
   ///
@@ -247,7 +251,7 @@ abstract class PrivKitPlatform extends PlatformInterface {
   /// the same way a UserService is called.
   Future<int?> binderFromSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
     int? userServiceHandle,
   }) {
     throw UnimplementedError(
