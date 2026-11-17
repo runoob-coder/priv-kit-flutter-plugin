@@ -669,4 +669,49 @@ void main() {
     final ping = await platform.binderPing(42);
     expect(ping, isFalse);
   });
+
+  test(
+    'external start provider calls decode results and forward arguments',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            log.add(methodCall);
+            return switch (methodCall.method) {
+              'externalStartProviderIds' => ['shizuku'],
+              'externalStartCheckAuthorization' => <String, Object?>{
+                'authorized': true,
+                'message': 'ready',
+              },
+              'externalStartRequestAuthorization' => <String, Object?>{
+                'authorized': null,
+              },
+              'externalStartRun' => 'output',
+              _ => null,
+            };
+          });
+
+      expect(await platform.externalStartProviderIds(), ['shizuku']);
+      final checked = await platform.externalStartCheckAuthorization('shizuku');
+      expect(checked.authorized, isTrue);
+      expect(checked.message, 'ready');
+      expect(log.last.arguments['providerId'], 'shizuku');
+
+      final requested = await platform.externalStartRequestAuthorization(
+        'shizuku',
+      );
+      expect(requested.authorized, isNull);
+
+      expect(
+        await platform.externalStartRun(
+          providerId: 'shizuku',
+          commandLine: 'start',
+          operationId: 'op',
+        ),
+        'output',
+      );
+      final run = log.lastWhere((c) => c.method == 'externalStartRun');
+      expect(run.arguments['commandLine'], 'start');
+      expect(run.arguments['operationId'], 'op');
+    },
+  );
 }

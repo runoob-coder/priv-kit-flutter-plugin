@@ -1,3 +1,13 @@
+## 0.22.0
+
+### Upgrade priv-core 0.19.0 → 0.22.0
+
+Adds `PrivilegeExternalStartProvider` support: register a provider natively with
+`PrivKitExternalStartProviders.register(...)`, then use
+`externalStartCheckAuthorization`, `externalStartRequestAuthorization` and
+`externalStartRun` from Dart. The optional `priv-external-shizuku` module works
+this way. Existing APIs are unchanged.
+
 ## 0.19.0
 
 ### Upgrade priv-core 0.18.0 → 0.19.0

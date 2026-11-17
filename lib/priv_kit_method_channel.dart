@@ -735,6 +735,45 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       ) ??
       '';
 
+  @override
+  Future<List<String>> externalStartProviderIds() async =>
+      (await methodChannel.invokeListMethod<String>(
+        'externalStartProviderIds',
+      )) ??
+      const <String>[];
+
+  @override
+  Future<PrivExternalStartResult> externalStartCheckAuthorization(
+    String providerId,
+  ) async => PrivExternalStartResult.fromMap(
+    await _requireMap('externalStartCheckAuthorization', <String, Object?>{
+      'providerId': providerId,
+    }),
+  );
+
+  @override
+  Future<PrivExternalStartResult> externalStartRequestAuthorization(
+    String providerId,
+  ) async => PrivExternalStartResult.fromMap(
+    await _requireMap('externalStartRequestAuthorization', <String, Object?>{
+      'providerId': providerId,
+    }),
+  );
+
+  @override
+  Future<String> externalStartRun({
+    required String providerId,
+    required String commandLine,
+    String? operationId,
+  }) async =>
+      await methodChannel
+          .invokeMethod<String>('externalStartRun', <String, Object?>{
+            'providerId': providerId,
+            'commandLine': commandLine,
+            'operationId': operationId,
+          }) ??
+      '';
+
   Future<Map<dynamic, dynamic>> _requireMap(
     String method, [
     Map<String, Object?>? arguments,

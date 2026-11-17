@@ -1,5 +1,6 @@
 package com.noob_coder.priv_kit
 
+import priv.kit.core.PrivilegeExternalStartResult
 import priv.kit.core.PrivilegeServerInfo
 import priv.kit.core.PrivilegeStartupException
 import priv.kit.core.adb.PrivilegeAdbAuthorizationCheckResult
@@ -99,6 +100,11 @@ internal fun PrivilegeServerInfo.toMap(): Map<String, Any?> = mapOf(
     "pid" to pid,
     "protocolVersion" to protocolVersion,
     "selinuxContext" to selinuxContext,
+)
+
+internal fun PrivilegeExternalStartResult.toMap(): Map<String, Any?> = mapOf(
+    "authorized" to authorized,
+    "message" to message?.toString(),
 )
 
 internal fun PrivilegeAdbIdentityInfo.toMap(): Map<String, Any?> = mapOf(

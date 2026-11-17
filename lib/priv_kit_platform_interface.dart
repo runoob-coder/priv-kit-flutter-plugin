@@ -690,4 +690,38 @@ abstract class PrivKitPlatform extends PlatformInterface {
       'externalStartupRunThroughBridge() has not been implemented.',
     );
   }
+
+  /// Ids of registered Core external start providers.
+  Future<List<String>> externalStartProviderIds() {
+    throw UnimplementedError(
+      'externalStartProviderIds() has not been implemented.',
+    );
+  }
+
+  /// Reads a provider's authorization state without prompting the user.
+  Future<PrivExternalStartResult> externalStartCheckAuthorization(
+    String providerId,
+  ) {
+    throw UnimplementedError(
+      'externalStartCheckAuthorization() has not been implemented.',
+    );
+  }
+
+  /// Requests authorization from a provider.
+  Future<PrivExternalStartResult> externalStartRequestAuthorization(
+    String providerId,
+  ) {
+    throw UnimplementedError(
+      'externalStartRequestAuthorization() has not been implemented.',
+    );
+  }
+
+  /// Runs [commandLine] through a Core external start provider.
+  Future<String> externalStartRun({
+    required String providerId,
+    required String commandLine,
+    String? operationId,
+  }) {
+    throw UnimplementedError('externalStartRun() has not been implemented.');
+  }
 }

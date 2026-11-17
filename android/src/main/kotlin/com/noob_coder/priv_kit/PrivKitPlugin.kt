@@ -1,5 +1,6 @@
 package com.noob_coder.priv_kit
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import priv.kit.core.Privilege
 import priv.kit.core.PrivilegeConfig
+import priv.kit.core.PrivilegeExternalStartResult
 import priv.kit.core.PrivilegeExternalStartup
 import priv.kit.core.adb.PrivilegeAdbConnectionOptions
 import priv.kit.core.PrivilegeExternalStartupBridgeOptions
@@ -35,6 +37,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var methodChannel: MethodChannel
     private lateinit var serverStateChannel: EventChannel
     private lateinit var startupLogChannel: EventChannel
+    private lateinit var appContext: Context
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -52,6 +55,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var startupLogSink: EventChannel.EventSink? = null
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+        appContext = flutterPluginBinding.applicationContext
         val messenger = flutterPluginBinding.binaryMessenger
         methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
         methodChannel.setMethodCallHandler(this)
@@ -287,6 +291,28 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                         options = call.externalStartupBridgeOptions(),
                         startupLogListener = listener,
                     )
+                }
+            }
+
+            "externalStartProviderIds" -> runAsync(result) {
+                PrivKitExternalStartProviders.ids()
+            }
+
+            "externalStartCheckAuthorization" -> runAsync(result) {
+                PrivKitExternalStartProviders.require(call.requireString("providerId"))
+                    .checkAuthorization(appContext).toMap()
+            }
+
+            "externalStartRequestAuthorization" -> runAsync(result) {
+                PrivKitExternalStartProviders.require(call.requireString("providerId"))
+                    .requestAuthorization(appContext).toMap()
+            }
+
+            "externalStartRun" -> runAsync(result) {
+                val listener = call.startupLogListener()
+                withOperation(call) {
+                    PrivKitExternalStartProviders.require(call.requireString("providerId"))
+                        .runStarter(appContext, call.requireString("commandLine"), listener)
                 }
             }
 

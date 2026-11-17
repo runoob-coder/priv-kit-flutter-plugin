@@ -934,6 +934,39 @@ class PrivKit {
     ),
   );
 
+  /// Ids of registered Core external start providers.
+  Future<List<String>> externalStartProviderIds() =>
+      _guard(_platform.externalStartProviderIds);
+
+  /// Reads a provider's authorization state without prompting the user.
+  ///
+  /// [PrivExternalStartResult.authorized] is null when it is unavailable.
+  Future<PrivExternalStartResult> externalStartCheckAuthorization(
+    String providerId,
+  ) => _guard(() => _platform.externalStartCheckAuthorization(providerId));
+
+  /// Requests authorization from a provider.
+  Future<PrivExternalStartResult> externalStartRequestAuthorization(
+    String providerId,
+  ) => _guard(() => _platform.externalStartRequestAuthorization(providerId));
+
+  /// Runs [commandLine] through a registered external start provider.
+  ///
+  /// Providers are registered natively through
+  /// `PrivKitExternalStartProviders.register`, e.g. the optional
+  /// `priv-external-shizuku` module.
+  Future<String> externalStartRun({
+    required String providerId,
+    required String commandLine,
+    String? operationId,
+  }) => _guard(
+    () => _platform.externalStartRun(
+      providerId: providerId,
+      commandLine: commandLine,
+      operationId: operationId,
+    ),
+  );
+
   Future<T> _guard<T>(Future<T> Function() body) async {
     try {
       return await body();

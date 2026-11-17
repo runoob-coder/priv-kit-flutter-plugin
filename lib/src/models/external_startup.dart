@@ -46,3 +46,20 @@ abstract class PrivExternalStartupBridgeOptions
     'sourcePrefix': sourcePrefix,
   };
 }
+
+/// Authorization state reported by a Core external start provider.
+class PrivExternalStartResult {
+  const PrivExternalStartResult({required this.authorized, this.message});
+
+  /// Null when the provider is unavailable.
+  final bool? authorized;
+
+  /// Localized state or authorization detail.
+  final String? message;
+
+  factory PrivExternalStartResult.fromMap(Map<dynamic, dynamic> map) =>
+      PrivExternalStartResult(
+        authorized: map['authorized'] as bool?,
+        message: map['message'] as String?,
+      );
+}

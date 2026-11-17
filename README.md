@@ -32,6 +32,9 @@ This plugin covers the parts of [`priv-core`][priv-core] that make sense to driv
 
 - **Startup** — Root, ADB Wireless Debugging, ADB static TCP/IP, manual, and
   external startup (for example through Shizuku).
+- **External start providers** — register a Core `PrivilegeExternalStartProvider`
+  (e.g. the optional Shizuku module), check/request authorization and run the
+  starter from Dart.
 - **Connection state** — a process-wide stream, plus startup diagnostics.
 - **Server lifecycle** — ping, shutdown, owner restart, runtime configuration.
 - **Permissions** — server permission queries, plus runtime permission
@@ -71,7 +74,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.19.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.22.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -287,6 +290,30 @@ final output = await privKit.externalStartupRunThroughBridge(
   bridgeId: 'shizuku',
 );
 ```
+
+priv-core 0.22.0 adds `PrivilegeExternalStartProvider`. The optional
+`priv-external-shizuku:0.22.0` module implements it; add it to the host app and
+register the provider:
+
+```kotlin
+PrivKitExternalStartProviders.register(PrivilegeExternalShizuku)
+```
+
+```dart
+final providers = await privKit.externalStartProviderIds();
+if (providers.isNotEmpty) {
+  final id = providers.first;
+  final status = await privKit.externalStartCheckAuthorization(id);
+  if (status.authorized == true) {
+    final command = await privKit.getNativeStarterCommand();
+    await privKit.externalStartRun(providerId: id, commandLine: command);
+  } else {
+    await privKit.externalStartRequestAuthorization(id);
+  }
+}
+```
+
+`authorized` is `null` when unavailable.
 
 ### Cancelling a startup
 

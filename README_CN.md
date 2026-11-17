@@ -31,6 +31,8 @@ Priv Kit 会启动一个独立的 Privileged Server 进程，并把它的 Binder
 
 - **启动方式** — Root、ADB 无线调试、ADB 静态 TCP/IP 端口、手动启动、外部启动
   （例如通过 Shizuku）。
+- **外部启动 Provider** — 注册 Core 的 `PrivilegeExternalStartProvider`（如可选的
+  Shizuku 模块），在 Dart 侧查询/请求授权并执行启动命令。
 - **连接状态** — 进程级状态流，以及启动过程的诊断日志。
 - **服务端生命周期** — ping、关闭、owner 重启、运行时配置。
 - **权限** — 服务端权限查询，以及任意包的运行时权限管理。
@@ -64,7 +66,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.19.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.22.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -272,6 +274,32 @@ final output = await privKit.externalStartupRunThroughBridge(
   bridgeId: 'shizuku',
 );
 ```
+
+priv-core 0.22.0 新增 `PrivilegeExternalStartProvider`，可选的
+`priv-external-shizuku:0.22.0` 模块实现了它。在宿主 App 添加该模块并注册：
+
+```kotlin
+PrivKitExternalStartProviders.register(PrivilegeExternalShizuku)
+```
+
+```dart
+final providers = await privKit.externalStartProviderIds();
+if (providers.isNotEmpty) {
+  final id = providers.first;
+  final status = await privKit.externalStartCheckAuthorization(id);
+  if (status.authorized == true) {
+    final command = await privKit.getNativeStarterCommand();
+    await privKit.externalStartRun(providerId: id, commandLine: command);
+  } else {
+    await privKit.externalStartRequestAuthorization(id);
+  }
+}
+```
+
+`authorized` 为 `null` 表示不可用。
+
+`authorized` 为 `null` 表示不可用；需要用户授权时调用
+`externalStartRequestAuthorization('shizuku')`。
 
 ### 取消启动
 

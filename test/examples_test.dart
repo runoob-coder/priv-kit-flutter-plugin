@@ -423,6 +423,27 @@ class _FakePlatform extends PrivKitPlatform {
     required String bridgeId,
     PrivExternalStartupBridgeOptions? options,
   }) => Future.value('');
+
+  @override
+  Future<List<String>> externalStartProviderIds() =>
+      Future.value(const ['shizuku']);
+
+  @override
+  Future<PrivExternalStartResult> externalStartCheckAuthorization(
+    String providerId,
+  ) => Future.value(const PrivExternalStartResult(authorized: true));
+
+  @override
+  Future<PrivExternalStartResult> externalStartRequestAuthorization(
+    String providerId,
+  ) => Future.value(const PrivExternalStartResult(authorized: true));
+
+  @override
+  Future<String> externalStartRun({
+    required String providerId,
+    required String commandLine,
+    String? operationId,
+  }) => Future.value('');
 }
 
 void main() {
@@ -669,6 +690,17 @@ void main() {
       commandLine: command,
       bridgeId: 'shizuku',
     );
+
+    final providers = await privKit.externalStartProviderIds();
+    if (providers.isNotEmpty) {
+      final id = providers.first;
+      final status = await privKit.externalStartCheckAuthorization(id);
+      if (status.authorized == true) {
+        await privKit.externalStartRun(providerId: id, commandLine: command);
+      } else {
+        await privKit.externalStartRequestAuthorization(id);
+      }
+    }
 
     // Streaming.
     final cmdSub = privKit
