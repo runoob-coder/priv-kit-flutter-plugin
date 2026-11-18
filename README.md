@@ -133,7 +133,7 @@ class MainApp : Application() {
 ```kotlin
 // android/app/build.gradle.kts
 dependencies {
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.2")
 }
 ```
 
@@ -313,7 +313,8 @@ if (providers.isNotEmpty) {
 }
 ```
 
-`authorized` is `null` when unavailable.
+`authorized` is `null` when unavailable. See the [example](https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example)
+for a complete Shizuku demo.
 
 ### Cancelling a startup
 

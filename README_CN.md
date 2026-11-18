@@ -123,7 +123,7 @@ class MainApp : Application() {
 ```kotlin
 // android/app/build.gradle.kts
 dependencies {
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.2")
 }
 ```
 
@@ -296,10 +296,10 @@ if (providers.isNotEmpty) {
 }
 ```
 
-`authorized` 为 `null` 表示不可用。
-
 `authorized` 为 `null` 表示不可用；需要用户授权时调用
 `externalStartRequestAuthorization('shizuku')`。
+
+完整的 Shizuku 演示见 [example](https://github.com/runoob-coder/priv-kit-flutter-plugin/tree/main/example) 工程。
 
 ### 取消启动
 

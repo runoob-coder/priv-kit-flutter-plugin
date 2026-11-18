@@ -31,6 +31,7 @@ class _MyAppState extends State<MyApp> {
 
   PrivServerInfo? _server;
   String? _nativeStarterCommand;
+  PrivExternalStartResult? _shizukuResult;
   bool _busy = false;
   bool _streaming = false;
 
@@ -154,6 +155,63 @@ class _MyAppState extends State<MyApp> {
     setState(() => _nativeStarterCommand = command);
     _log('adb shell $command');
   });
+
+  Future<String?> _shizukuProviderId() async {
+    final ids = await _privKit.externalStartProviderIds();
+    if (ids.contains('shizuku')) return 'shizuku';
+    _log('shizuku provider not registered; ids=$ids');
+    return null;
+  }
+
+  Future<void> _shizukuCheck() => _run(() async {
+    final id = await _shizukuProviderId();
+    if (id == null) return;
+    final result = await _privKit.externalStartCheckAuthorization(id);
+    setState(() => _shizukuResult = result);
+    _log('shizuku status -> authorized=${result.authorized} ${result.message ?? ''}');
+  });
+
+  Future<void> _shizukuAuthorize() => _run(() async {
+    final id = await _shizukuProviderId();
+    if (id == null) return;
+    final result = await _privKit.externalStartRequestAuthorization(id);
+    setState(() => _shizukuResult = result);
+    _log('shizuku requestAuthorization -> authorized=${result.authorized}');
+  });
+
+  Future<void> _shizukuStart() => _run(() async {
+    final id = await _shizukuProviderId();
+    if (id == null) return;
+    var result = await _privKit.externalStartCheckAuthorization(id);
+    setState(() => _shizukuResult = result);
+    if (result.authorized != true) {
+      result = await _privKit.externalStartRequestAuthorization(id);
+      setState(() => _shizukuResult = result);
+      if (result.authorized != true) {
+        _log('shizuku not authorized: ${result.message ?? ''}');
+        return;
+      }
+    }
+    final command = await _privKit.getNativeStarterCommand();
+    setState(() => _nativeStarterCommand = command);
+    final output = await _privKit.externalStartRun(
+      providerId: id,
+      commandLine: command,
+    );
+    _log('externalStartRun(shizuku) -> $output');
+  });
+
+  String _shizukuStatusText(AppLocalizations l10n) {
+    final result = _shizukuResult;
+    if (result == null) return l10n.shizukuStatusUnknown;
+    final status = switch (result.authorized) {
+      true => l10n.shizukuStatusAuthorized,
+      false => l10n.shizukuStatusUnauthorized,
+      null => l10n.shizukuStatusUnavailable,
+    };
+    final message = result.message;
+    return message == null || message.isEmpty ? status : '$status · $message';
+  }
 
   Future<void> _loadDeniedPermissions() => _run(() async {
     final denied = await _privKit.getDeniedServerPermissions();
@@ -681,6 +739,14 @@ class _MyAppState extends State<MyApp> {
                 ),
               ],
               const SizedBox(height: 12),
+              _ShizukuPanel(
+                enabled: !_busy,
+                status: _shizukuStatusText(l10n),
+                onCheck: _shizukuCheck,
+                onAuthorize: _shizukuAuthorize,
+                onStart: _shizukuStart,
+              ),
+              const SizedBox(height: 12),
               _FilePanel(
                 enabled: server != null && !_busy,
                 onInspect: _fileInspect,
@@ -731,6 +797,61 @@ class _CommandRequest {
 
   /// `null` means "use the 30s default"; [noCommandTimeout] disables it.
   final int? timeoutMillis;
+}
+
+class _ShizukuPanel extends StatelessWidget {
+  const _ShizukuPanel({
+    required this.enabled,
+    required this.status,
+    required this.onCheck,
+    required this.onAuthorize,
+    required this.onStart,
+  });
+
+  final bool enabled;
+  final String status;
+  final VoidCallback onCheck;
+  final VoidCallback onAuthorize;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _PanelCard(
+      title: l10n.shizukuPanelTitle,
+      description: l10n.shizukuPanelDesc,
+      footer: l10n.shizukuPanelFooter,
+      child: Column(
+        crossAxisAlignment: .start,
+        children: [
+          Text(
+            '${l10n.shizukuStatusLabel}: $status',
+            style: _captionStyle(context),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _button(
+                label: l10n.shizukuActionCheck,
+                onPressed: enabled ? onCheck : null,
+              ),
+              _button(
+                label: l10n.shizukuActionAuthorize,
+                onPressed: enabled ? onAuthorize : null,
+              ),
+              _button(
+                label: l10n.shizukuActionStart,
+                style: .tinted,
+                onPressed: enabled ? onStart : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Lets the user type an arbitrary command and pick how to consume it.

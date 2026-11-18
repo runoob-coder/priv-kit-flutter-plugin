@@ -69,5 +69,16 @@
   "btnWrite": "写入",
   "btnRead": "读取",
   "btnList": "列出一层",
-  "btnDelete": "删除"
+  "btnDelete": "删除",
+  "shizukuPanelTitle": "Shizuku 外部启动",
+  "shizukuPanelDesc": "使用可选的 priv-external-shizuku provider：检查授权后，通过 Shizuku 运行原生启动命令。",
+  "shizukuStatusLabel": "状态",
+  "shizukuStatusUnknown": "未检查",
+  "shizukuStatusAuthorized": "已授权",
+  "shizukuStatusUnauthorized": "未授权",
+  "shizukuStatusUnavailable": "不可用",
+  "shizukuActionCheck": "检查状态",
+  "shizukuActionAuthorize": "请求授权",
+  "shizukuActionStart": "通过 Shizuku 启动",
+  "shizukuPanelFooter": "状态来自 Shizuku provider 会话。部分 Shizuku 版本的管理器「已授权应用」列表不会显示通过 binder 授予的权限，请以本页状态或 API_V23 运行时权限为准。"
 }

@@ -44,6 +44,51 @@ void main() {
     expect(find.text('Start as Root'), findsNothing);
   });
 
+  testWidgets('shows the Shizuku provider actions in both locales', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp(locale: Locale('en')));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Shizuku external start'),
+      500,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
+
+    expect(find.text('Shizuku external start'), findsOneWidget);
+    expect(
+      find.textContaining('Status comes from the Shizuku provider session'),
+      findsOneWidget,
+    );
+    expect(find.text('Check status'), findsOneWidget);
+    expect(find.text('Request authorization'), findsOneWidget);
+    expect(find.text('Start via Shizuku'), findsOneWidget);
+    expect(find.textContaining('Status: Not checked'), findsOneWidget);
+
+    await tester.tap(find.text('中'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Shizuku 外部启动'),
+      500,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ).first,
+    );
+
+    expect(find.text('Shizuku 外部启动'), findsOneWidget);
+    expect(
+      find.textContaining('状态来自 Shizuku provider 会话'),
+      findsOneWidget,
+    );
+    expect(find.text('检查状态'), findsOneWidget);
+    expect(find.text('通过 Shizuku 启动'), findsOneWidget);
+    expect(find.textContaining('状态: 未检查'), findsOneWidget);
+  });
+
   testWidgets('log button opens a dialog that can clear logs', (
     WidgetTester tester,
   ) async {

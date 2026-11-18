@@ -1,17 +1,26 @@
 # priv_kit_example
 
-Demonstrates how to use the priv_kit plugin.
+Flutter demo for the `priv_kit` plugin. See [README_CN.md](README_CN.md) for Chinese.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```sh
+flutter pub get
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Shizuku demo
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+`MainApp` registers `PrivilegeExternalShizuku`. The Shizuku panel can check
+authorization, request it, and start the privileged server through the provider.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+On a non-rooted device, use **Start via computer (adb)** in Shizuku Manager and
+run the command shown there.
+
+The in-app status comes from the provider session. Some Shizuku builds still
+show `0 authorized apps` in Manager after granting. Verify with:
+
+```sh
+adb shell dumpsys package com.noob_coder.priv_kit_example | grep API_V23
+# moe.shizuku.manager.permission.API_V23: granted=true
+```

@@ -3,8 +3,10 @@ package com.noob_coder.priv_kit_example
 import android.app.Application
 import android.content.Context
 import android.os.Build
+import com.noob_coder.priv_kit.PrivKitExternalStartProviders
 import org.lsposed.hiddenapibypass.HiddenApiBypass
 import priv.kit.core.PrivilegeConfig
+import priv.kit.external.shizuku.PrivilegeExternalShizuku
 import java.io.File
 
 /**
@@ -22,6 +24,8 @@ class MainApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        PrivKitExternalStartProviders.register(PrivilegeExternalShizuku)
+
         // Crash-report directories, in write order. Set before any startup;
         // external storage may be unavailable.
         PrivilegeConfig.crashLogDirectories = listOfNotNull(

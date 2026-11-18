@@ -73,7 +73,10 @@ android {
 
 dependencies {
     // Required by Priv Kit to reach the hidden platform APIs it relies on.
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
+    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.2")
+
+    // Optional external-start provider demonstrated by this example.
+    implementation("io.github.priv-kit:priv-external-shizuku:0.22.0")
 
     // kotlinx-coroutines-android is deliberately not declared here: priv-core
     // publishes it in its api variant and the plugin depends on priv-core with

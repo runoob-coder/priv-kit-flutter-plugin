@@ -305,5 +305,49 @@
   "btnDelete": "Delete",
   "@btnDelete": {
     "description": "Button: delete a file or directory."
+  },
+  "shizukuPanelTitle": "Shizuku external start",
+  "@shizukuPanelTitle": {
+    "description": "Title of the Shizuku provider panel."
+  },
+  "shizukuPanelDesc": "Uses the optional priv-external-shizuku provider. Check authorization, then run the native starter through Shizuku.",
+  "@shizukuPanelDesc": {
+    "description": "Explanation of the Shizuku provider panel."
+  },
+  "shizukuStatusLabel": "Status",
+  "@shizukuStatusLabel": {
+    "description": "Label for the current Shizuku authorization status."
+  },
+  "shizukuStatusUnknown": "Not checked",
+  "@shizukuStatusUnknown": {
+    "description": "Status shown before checking Shizuku authorization."
+  },
+  "shizukuStatusAuthorized": "Authorized",
+  "@shizukuStatusAuthorized": {
+    "description": "Status when Shizuku authorization is granted."
+  },
+  "shizukuStatusUnauthorized": "Not authorized",
+  "@shizukuStatusUnauthorized": {
+    "description": "Status when Shizuku authorization is denied."
+  },
+  "shizukuStatusUnavailable": "Unavailable",
+  "@shizukuStatusUnavailable": {
+    "description": "Status when no supported Shizuku session is available."
+  },
+  "shizukuActionCheck": "Check status",
+  "@shizukuActionCheck": {
+    "description": "Button: check Shizuku authorization."
+  },
+  "shizukuActionAuthorize": "Request authorization",
+  "@shizukuActionAuthorize": {
+    "description": "Button: request Shizuku authorization."
+  },
+  "shizukuActionStart": "Start via Shizuku",
+  "@shizukuActionStart": {
+    "description": "Button: run the native starter through Shizuku."
+  },
+  "shizukuPanelFooter": "Status comes from the Shizuku provider session. Some Shizuku builds do not list binder-granted apps in the manager's authorized-app screen; use this status or the API_V23 runtime permission as the source of truth.",
+  "@shizukuPanelFooter": {
+    "description": "Note explaining why Shizuku Manager may show no authorized apps."
   }
 }

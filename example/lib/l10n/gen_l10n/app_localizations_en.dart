@@ -235,4 +235,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get btnDelete => 'Delete';
+
+  @override
+  String get shizukuPanelTitle => 'Shizuku external start';
+
+  @override
+  String get shizukuPanelDesc =>
+      'Uses the optional priv-external-shizuku provider. Check authorization, then run the native starter through Shizuku.';
+
+  @override
+  String get shizukuStatusLabel => 'Status';
+
+  @override
+  String get shizukuStatusUnknown => 'Not checked';
+
+  @override
+  String get shizukuStatusAuthorized => 'Authorized';
+
+  @override
+  String get shizukuStatusUnauthorized => 'Not authorized';
+
+  @override
+  String get shizukuStatusUnavailable => 'Unavailable';
+
+  @override
+  String get shizukuActionCheck => 'Check status';
+
+  @override
+  String get shizukuActionAuthorize => 'Request authorization';
+
+  @override
+  String get shizukuActionStart => 'Start via Shizuku';
+
+  @override
+  String get shizukuPanelFooter =>
+      'Status comes from the Shizuku provider session. Some Shizuku builds do not list binder-granted apps in the manager\'s authorized-app screen; use this status or the API_V23 runtime permission as the source of truth.';
 }

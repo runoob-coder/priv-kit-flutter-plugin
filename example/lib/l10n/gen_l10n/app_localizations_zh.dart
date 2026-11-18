@@ -230,4 +230,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get btnDelete => '删除';
+
+  @override
+  String get shizukuPanelTitle => 'Shizuku 外部启动';
+
+  @override
+  String get shizukuPanelDesc =>
+      '使用可选的 priv-external-shizuku provider：检查授权后，通过 Shizuku 运行原生启动命令。';
+
+  @override
+  String get shizukuStatusLabel => '状态';
+
+  @override
+  String get shizukuStatusUnknown => '未检查';
+
+  @override
+  String get shizukuStatusAuthorized => '已授权';
+
+  @override
+  String get shizukuStatusUnauthorized => '未授权';
+
+  @override
+  String get shizukuStatusUnavailable => '不可用';
+
+  @override
+  String get shizukuActionCheck => '检查状态';
+
+  @override
+  String get shizukuActionAuthorize => '请求授权';
+
+  @override
+  String get shizukuActionStart => '通过 Shizuku 启动';
+
+  @override
+  String get shizukuPanelFooter =>
+      '状态来自 Shizuku provider 会话。部分 Shizuku 版本的管理器「已授权应用」列表不会显示通过 binder 授予的权限，请以本页状态或 API_V23 运行时权限为准。';
 }

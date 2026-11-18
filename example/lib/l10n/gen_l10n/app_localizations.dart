@@ -517,6 +517,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get btnDelete;
+
+  /// Title of the Shizuku provider panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shizuku external start'**
+  String get shizukuPanelTitle;
+
+  /// Explanation of the Shizuku provider panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the optional priv-external-shizuku provider. Check authorization, then run the native starter through Shizuku.'**
+  String get shizukuPanelDesc;
+
+  /// Label for the current Shizuku authorization status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get shizukuStatusLabel;
+
+  /// Status shown before checking Shizuku authorization.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get shizukuStatusUnknown;
+
+  /// Status when Shizuku authorization is granted.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized'**
+  String get shizukuStatusAuthorized;
+
+  /// Status when Shizuku authorization is denied.
+  ///
+  /// In en, this message translates to:
+  /// **'Not authorized'**
+  String get shizukuStatusUnauthorized;
+
+  /// Status when no supported Shizuku session is available.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get shizukuStatusUnavailable;
+
+  /// Button: check Shizuku authorization.
+  ///
+  /// In en, this message translates to:
+  /// **'Check status'**
+  String get shizukuActionCheck;
+
+  /// Button: request Shizuku authorization.
+  ///
+  /// In en, this message translates to:
+  /// **'Request authorization'**
+  String get shizukuActionAuthorize;
+
+  /// Button: run the native starter through Shizuku.
+  ///
+  /// In en, this message translates to:
+  /// **'Start via Shizuku'**
+  String get shizukuActionStart;
+
+  /// Note explaining why Shizuku Manager may show no authorized apps.
+  ///
+  /// In en, this message translates to:
+  /// **'Status comes from the Shizuku provider session. Some Shizuku builds do not list binder-granted apps in the manager\'s authorized-app screen; use this status or the API_V23 runtime permission as the source of truth.'**
+  String get shizukuPanelFooter;
 }
 
 class _AppLocalizationsDelegate
