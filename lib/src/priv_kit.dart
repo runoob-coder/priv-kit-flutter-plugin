@@ -258,13 +258,13 @@ class PrivKit {
   /// Cheaper than [binderFromSystemService] when you only need to know whether
   /// the service exists — for example to decide which source to use.
   ///
-  /// [source] defaults to [PrivBinderServiceSource.remoteProcess].
+  /// [source] defaults to [PrivBinderServiceSource.currentProcess].
   ///
   /// [userServiceHandle] is a handle from [bindUserService]; when supplied, the
   /// lookup runs in that UserService process instead of the main server.
   Future<bool> binderHasSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
     int? userServiceHandle,
   }) => _guard(
     () => _platform.binderHasSystemService(
@@ -277,7 +277,7 @@ class PrivKit {
   /// Resolves [serviceName] into a handle Dart can inspect, or `null` when the
   /// service is not available from [source].
   ///
-  /// [source] defaults to [PrivBinderServiceSource.remoteProcess].
+  /// [source] defaults to [PrivBinderServiceSource.currentProcess].
   ///
   /// [userServiceHandle] forwards both the lookup and the returned wrapper's
   /// transactions through a bound UserService process. Keep that connection
@@ -296,7 +296,7 @@ class PrivKit {
   /// Release the handle with [binderClose] when you are done with it.
   Future<int?> binderFromSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
     int? userServiceHandle,
   }) => _guard(
     () => _platform.binderFromSystemService(

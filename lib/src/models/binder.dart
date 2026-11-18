@@ -10,15 +10,14 @@
 /// integer handle. Everything that touches the Binder's own transactions has
 /// to happen in Kotlin.
 enum PrivBinderServiceSource {
-  /// Looked up through `ServiceManager` in this app's own process.
+  /// Default: looked up through `ServiceManager` in this app's own process.
   currentProcess('CURRENT_PROCESS'),
 
-  /// Looked up inside the connected remote process; the default.
+  /// Looked up inside the connected remote process; pass explicitly.
   ///
   /// Without a `userServiceHandle` this is the Privileged Server; with one it
-  /// is the selected UserService process. Use it for services that are only
-  /// reachable as `shell` or root, such as vendor services like
-  /// `miui.mqsas.IMQSNative`.
+  /// is the selected UserService process. Use it for services only reachable as
+  /// `shell` or root, such as `miui.mqsas.IMQSNative`.
   remoteProcess('REMOTE_PROCESS');
 
   const PrivBinderServiceSource(this.wireName);

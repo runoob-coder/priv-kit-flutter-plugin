@@ -607,9 +607,9 @@ void main() {
     },
   );
 
-  test('binderHasSystemService defaults to the remote process', () async {
+  test('binderHasSystemService defaults to the current process', () async {
     await platform.binderHasSystemService('package');
-    expect(log.single.arguments['source'], 'REMOTE_PROCESS');
+    expect(log.single.arguments['source'], 'CURRENT_PROCESS');
     expect(log.single.arguments['userServiceHandle'], isNull);
   });
 
@@ -626,10 +626,10 @@ void main() {
     expect(call.arguments['userServiceHandle'], 7);
   });
 
-  test('binderFromSystemService defaults to the remote process', () async {
+  test('binderFromSystemService defaults to the current process', () async {
     final handle = await platform.binderFromSystemService('nope');
     expect(handle, isNull);
-    expect(log.single.arguments['source'], 'REMOTE_PROCESS');
+    expect(log.single.arguments['source'], 'CURRENT_PROCESS');
     expect(log.single.arguments['userServiceHandle'], isNull);
   });
 

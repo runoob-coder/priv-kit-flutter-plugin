@@ -123,6 +123,6 @@ internal class PrivKitBinders(
 
     private fun MethodCall.serviceSource(): PrivilegeSystemServiceSource =
         PrivilegeSystemServiceSource.valueOf(
-            argument<String>("source") ?: PrivilegeSystemServiceSource.REMOTE_PROCESS.name,
+            argument<String>("source") ?: PrivilegeSystemServiceSource.CURRENT_PROCESS.name,
         )
 }

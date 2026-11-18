@@ -74,7 +74,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.22.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.23.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -291,8 +291,8 @@ final output = await privKit.externalStartupRunThroughBridge(
 );
 ```
 
-priv-core 0.22.0 adds `PrivilegeExternalStartProvider`. The optional
-`priv-external-shizuku:0.22.0` module implements it; add it to the host app and
+`PrivilegeExternalStartProvider` is available in priv-core. The optional
+`priv-external-shizuku:0.23.0` module implements it; add it to the host app and
 register the provider:
 
 ```kotlin
@@ -673,7 +673,7 @@ await privKit.binderFromSystemService(
 );
 ```
 
-Defaults to `remoteProcess`; pass `currentProcess` explicitly for an app-process lookup.
+Defaults to `currentProcess`. Binder transactions still run through the privileged server; pass `remoteProcess` to resolve the service there.
 
 - `currentProcess` — through `ServiceManager` in your own process.
 - `remoteProcess` — inside the connected remote process: the Privileged Server,

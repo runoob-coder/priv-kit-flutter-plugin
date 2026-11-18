@@ -1,3 +1,10 @@
+## 0.23.0
+
+### Upgrade priv-core 0.22.0 → 0.23.0
+
+Upgrade priv-core to 0.23.0. Binder lookups default to `currentProcess` again;
+pass `remoteProcess` explicitly for privileged-server or UserService lookups.
+
 ## 0.22.1
 
 Binder lookups now default to `remoteProcess`, matching priv-core. Pass

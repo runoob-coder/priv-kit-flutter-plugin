@@ -67,7 +67,7 @@ kotlin {
 dependencies {
     // `api`: host apps compile against priv-core types for UserServices,
     // PrivilegeExternalStartupBridge and PrivilegeExternalStartProvider.
-    api("io.github.priv-kit:priv-core:0.22.0")
+    api("io.github.priv-kit:priv-core:0.23.0")
 
     // priv-core calls are suspend functions; declare the runtime explicitly.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

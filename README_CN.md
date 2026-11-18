@@ -66,7 +66,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.22.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.23.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -275,8 +275,8 @@ final output = await privKit.externalStartupRunThroughBridge(
 );
 ```
 
-priv-core 0.22.0 新增 `PrivilegeExternalStartProvider`，可选的
-`priv-external-shizuku:0.22.0` 模块实现了它。在宿主 App 添加该模块并注册：
+priv-core 提供 `PrivilegeExternalStartProvider`，可选的
+`priv-external-shizuku:0.23.0` 模块实现了它。在宿主 App 添加该模块并注册：
 
 ```kotlin
 PrivKitExternalStartProviders.register(PrivilegeExternalShizuku)
@@ -640,7 +640,7 @@ await privKit.binderFromSystemService(
 );
 ```
 
-默认是 `remoteProcess`；需要本进程查找时显式传 `currentProcess`。
+默认是 `currentProcess`。Binder transaction 仍由特权服务端转发；需要由服务端或指定 UserService 查找时传 `remoteProcess`。
 
 - `currentProcess` —— 在本 App 进程内通过 `ServiceManager` 查找。
 - `remoteProcess` —— 在已连接的远端进程内查找：不传 `userServiceHandle` 时是

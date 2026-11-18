@@ -219,7 +219,7 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   @override
   Future<bool> binderHasSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
     int? userServiceHandle,
   }) async =>
       await methodChannel
@@ -233,7 +233,7 @@ class MethodChannelPrivKit extends PrivKitPlatform {
   @override
   Future<int?> binderFromSystemService(
     String serviceName, {
-    PrivBinderServiceSource source = PrivBinderServiceSource.remoteProcess,
+    PrivBinderServiceSource source = PrivBinderServiceSource.currentProcess,
     int? userServiceHandle,
   }) => methodChannel
       .invokeMethod<int>('binderFromSystemService', <String, Object?>{
