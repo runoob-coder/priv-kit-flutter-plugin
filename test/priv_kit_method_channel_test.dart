@@ -779,7 +779,7 @@ void main() {
       platform.openNotificationPermissionSettings(),
       platform.hasLocalNetworkPermission(),
       platform.requestLocalNetworkPermission(),
-      platform.openLocalNetworkPermissionSettings(),
+      platform.openAppDetailsSettings(),
     ]);
 
     expect(results, List<bool>.filled(7, true));
@@ -792,7 +792,7 @@ void main() {
         'openNotificationPermissionSettings',
         'hasLocalNetworkPermission',
         'requestLocalNetworkPermission',
-        'openLocalNetworkPermissionSettings',
+        'openAppDetailsSettings',
       ]),
     );
   });

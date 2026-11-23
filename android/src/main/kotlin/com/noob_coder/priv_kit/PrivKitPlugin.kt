@@ -352,8 +352,8 @@ class PrivKitPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHand
             "requestLocalNetworkPermission" ->
                 hostPermissions.requestLocalNetworkPermission(currentActivity, result)
 
-            "openLocalNetworkPermissionSettings" ->
-                result.success(hostPermissions.openLocalNetworkPermissionSettings())
+            "openAppDetailsSettings" ->
+                result.success(hostPermissions.openAppDetailsSettings())
 
             else -> when {
                 adb.handles(call.method) -> runAsync(result) {

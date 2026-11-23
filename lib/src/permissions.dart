@@ -47,13 +47,8 @@ class PrivKitPermissions {
   Future<bool> requestLocalNetworkPermission() =>
       _guard(_platform.requestLocalNetworkPermission);
 
-  /// Opens this app's permission list so the user can enable local network
-  /// access manually.
-  ///
-  /// Falls back to the app details page when the permission page cannot be
-  /// started (some ROMs require a signature permission for that Intent).
-  Future<bool> openLocalNetworkPermissionSettings() =>
-      _guard(_platform.openLocalNetworkPermissionSettings);
+  /// Opens this app's details page.
+  Future<bool> openAppDetailsSettings() => _guard(_platform.openAppDetailsSettings);
 
   Future<T> _guard<T>(Future<T> Function() body) async {
     try {

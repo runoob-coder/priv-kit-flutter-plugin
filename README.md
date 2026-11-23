@@ -1036,7 +1036,7 @@ through a connected Privileged Server.
 | `openNotificationPermissionSettings`          | notification settings, app-details fallback  |
 | `hasLocalNetworkPermission`                   | `ACCESS_LOCAL_NETWORK` state (true below API 37) |
 | `requestLocalNetworkPermission`               | ask the current Activity for local network   |
-| `openLocalNetworkPermissionSettings`          | permission list, app-details fallback        |
+| `openAppDetailsSettings`                      | app details page                             |
 
 ```dart
 if (!await privKit.permissions.hasNotificationPermission()) {

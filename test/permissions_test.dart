@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:priv_kit/priv_kit.dart';
@@ -12,7 +14,7 @@ class _FakePlatform extends PrivKitPlatform {
     'openNotificationPermissionSettings': true,
     'hasLocalNetworkPermission': false,
     'requestLocalNetworkPermission': true,
-    'openLocalNetworkPermissionSettings': true,
+    'openAppDetailsSettings': true,
   };
 
   bool _read(String name) {
@@ -44,8 +46,8 @@ class _FakePlatform extends PrivKitPlatform {
       _read('requestLocalNetworkPermission');
 
   @override
-  Future<bool> openLocalNetworkPermissionSettings() async =>
-      _read('openLocalNetworkPermissionSettings');
+  Future<bool> openAppDetailsSettings() async =>
+      _read('openAppDetailsSettings');
 }
 
 class _ThrowingPlatform extends _FakePlatform {
@@ -74,15 +76,26 @@ void main() {
     expect(await permissions.openNotificationPermissionSettings(), isTrue);
     expect(await permissions.hasLocalNetworkPermission(), isFalse);
     expect(await permissions.requestLocalNetworkPermission(), isTrue);
-    expect(await permissions.openLocalNetworkPermissionSettings(), isTrue);
+    expect(await permissions.openAppDetailsSettings(), isTrue);
     expect(platform.calls, [
       'hasNotificationPermission',
       'requestNotificationPermission',
       'openNotificationPermissionSettings',
       'hasLocalNetworkPermission',
       'requestLocalNetworkPermission',
-      'openLocalNetworkPermissionSettings',
+      'openAppDetailsSettings',
     ]);
+  });
+
+  test('openAppDetailsSettings avoids the blocked permission Intent', () {
+    final source = File(
+      'android/src/main/kotlin/com/noob_coder/priv_kit/PrivKitHostPermissions.kt',
+    ).readAsStringSync();
+    expect(source, isNot(contains('APP_PERMISSIONS_ACTION')));
+    expect(
+      source,
+      contains('fun openAppDetailsSettings(): Boolean = startAppDetailsSettings()'),
+    );
   });
 
   test('permissions API translates PlatformException', () async {

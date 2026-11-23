@@ -1,3 +1,8 @@
+## 0.24.2
+
+`openLocalNetworkPermissionSettings()` becomes `openAppDetailsSettings()` and
+opens app details directly; `MANAGE_APP_PERMISSIONS` needs a signature permission.
+
 ## 0.24.1
 
 ### Public Kotlin settings Intents

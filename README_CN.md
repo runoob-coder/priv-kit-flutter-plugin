@@ -977,7 +977,7 @@ if (await privKit.isWifiReady()) {
 | `openNotificationPermissionSettings`          | 通知设置页，失败回退应用详情                    |
 | `hasLocalNetworkPermission`                   | 本地网络权限状态（API 37 以下恒为 true）        |
 | `requestLocalNetworkPermission`               | 通过当前 Activity 申请本地网络权限              |
-| `openLocalNetworkPermissionSettings`          | 权限列表页，失败回退应用详情                    |
+| `openAppDetailsSettings`                      | 应用详情页                                   |
 
 ```dart
 if (!await privKit.permissions.hasNotificationPermission()) {

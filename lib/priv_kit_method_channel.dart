@@ -849,11 +849,8 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       false;
 
   @override
-  Future<bool> openLocalNetworkPermissionSettings() async =>
-      await methodChannel.invokeMethod<bool>(
-        'openLocalNetworkPermissionSettings',
-      ) ??
-      false;
+  Future<bool> openAppDetailsSettings() async =>
+      await methodChannel.invokeMethod<bool>('openAppDetailsSettings') ?? false;
 
   Future<Map<dynamic, dynamic>> _requireMap(
     String method, [

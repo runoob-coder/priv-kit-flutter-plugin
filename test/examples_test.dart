@@ -494,7 +494,7 @@ class _FakePlatform extends PrivKitPlatform {
   Future<bool> requestLocalNetworkPermission() => Future.value(true);
 
   @override
-  Future<bool> openLocalNetworkPermissionSettings() => Future.value(true);
+  Future<bool> openAppDetailsSettings() => Future.value(true);
 }
 
 void main() {

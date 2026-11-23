@@ -23,7 +23,6 @@ internal class PrivKitHostPermissions(private val context: Context) {
         private const val TAG = "PrivKitHostPermissions"
         private const val POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS"
         private const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
-        private const val APP_PERMISSIONS_ACTION = "android.intent.action.MANAGE_APP_PERMISSIONS"
         private const val REQ_NOTIFICATIONS = 0x4B01
         private const val REQ_LOCAL_NETWORK = 0x4B02
         private const val LOCAL_NETWORK_API = 37
@@ -38,7 +37,7 @@ internal class PrivKitHostPermissions(private val context: Context) {
         "openNotificationPermissionSettings",
         "hasLocalNetworkPermission",
         "requestLocalNetworkPermission",
-        "openLocalNetworkPermissionSettings",
+        "openAppDetailsSettings",
     )
 
     fun hasNotificationPermission(): Boolean =
@@ -91,17 +90,10 @@ internal class PrivKitHostPermissions(private val context: Context) {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         if (start(intent)) return true
-        return openAppDetails()
+        return startAppDetailsSettings()
     }
 
-    fun openLocalNetworkPermissionSettings(): Boolean {
-        if (Build.VERSION.SDK_INT < LOCAL_NETWORK_API) return false
-        val intent = Intent(APP_PERMISSIONS_ACTION)
-            .putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (start(intent)) return true
-        return openAppDetails()
-    }
+    fun openAppDetailsSettings(): Boolean = startAppDetailsSettings()
 
     private fun request(
         permission: String,
@@ -122,7 +114,7 @@ internal class PrivKitHostPermissions(private val context: Context) {
         activity.requestPermissions(arrayOf(permission), requestCode)
     }
 
-    private fun openAppDetails(): Boolean = start(
+    private fun startAppDetailsSettings(): Boolean = start(
         Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:${context.packageName}"),

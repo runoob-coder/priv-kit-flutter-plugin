@@ -837,10 +837,10 @@ abstract class PrivKitPlatform extends PlatformInterface {
     );
   }
 
-  /// Opens this app's permission list, with an app-details fallback.
-  Future<bool> openLocalNetworkPermissionSettings() {
+  /// Opens this app's details page.
+  Future<bool> openAppDetailsSettings() {
     throw UnimplementedError(
-      'openLocalNetworkPermissionSettings() has not been implemented.',
+      'openAppDetailsSettings() has not been implemented.',
     );
   }
 }
