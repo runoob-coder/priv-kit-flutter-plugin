@@ -1,3 +1,13 @@
+## 0.24.1
+
+### Public Kotlin settings Intents
+
+Adds `PrivKitSettingsIntents`, a public Kotlin object for host code that needs
+the Android Settings Intent itself, for example to build a notification
+`PendingIntent`. Builders cover Wi-Fi, Developer options (plain and highlighted),
+USB debugging and Wireless debugging. The channel-side navigation now reuses the
+same builders, so highlight keys and flags are defined in one place.
+
 ## 0.24.0
 
 ### Android system settings helpers

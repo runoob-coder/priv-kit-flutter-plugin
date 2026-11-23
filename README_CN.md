@@ -988,6 +988,36 @@ if (!await privKit.permissions.hasNotificationPermission()) {
 }
 ```
 
+## 🧩 Kotlin 设置页 Intent
+
+Dart 的 `open*Settings` 方法会直接启动 Activity，拿不到 `Intent`。当宿主的
+Kotlin 代码需要 Intent 本身（例如构造通知栏的 `PendingIntent`）时，可以使用
+公开的 `PrivKitSettingsIntents`：
+
+```kotlin
+import android.app.PendingIntent
+import com.noob_coder.priv_kit.PrivKitSettingsIntents
+
+val intent = PrivKitSettingsIntents.wirelessDebugging(context)
+val pendingIntent = PendingIntent.getActivity(
+    context,
+    0,
+    intent,
+    PendingIntent.FLAG_IMMUTABLE,
+)
+```
+
+| 构造器                            | 结果                               |
+|-----------------------------------|----------------------------------|
+| `wifi(context)`                   | Wi-Fi 设置页，高亮 WLAN 开关          |
+| `developer(context)`              | 开发者选项；未开启时跳「关于手机」         |
+| `developerAt(context, key)`       | 开发者选项并高亮指定偏好项                |
+| `usbDebugging(context)`           | 高亮 USB 调试开关                   |
+| `wirelessDebugging(context)`      | 高亮无线调试开关                     |
+
+所有构造器都会加 `FLAG_ACTIVITY_NEW_TASK`；带高亮的变体还会加
+`FLAG_ACTIVITY_CLEAR_TASK` 与 `:settings:fragment_args_key`。
+
 ## ⚠️ 错误处理
 
 所有失败都会抛出 `PrivKitException`：

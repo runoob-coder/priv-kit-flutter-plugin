@@ -1047,6 +1047,37 @@ if (!await privKit.permissions.hasNotificationPermission()) {
 }
 ```
 
+## 🧩 Kotlin settings Intents
+
+Dart's `open*Settings` methods start the Activity directly, so they cannot give
+you an `Intent`. Host Kotlin code can use the public `PrivKitSettingsIntents`
+object when it needs the Intent itself, for example for a notification
+`PendingIntent`:
+
+```kotlin
+import android.app.PendingIntent
+import com.noob_coder.priv_kit.PrivKitSettingsIntents
+
+val intent = PrivKitSettingsIntents.wirelessDebugging(context)
+val pendingIntent = PendingIntent.getActivity(
+    context,
+    0,
+    intent,
+    PendingIntent.FLAG_IMMUTABLE,
+)
+```
+
+| Builder                          | Result                                                     |
+|----------------------------------|------------------------------------------------------------|
+| `wifi(context)`                  | Wi-Fi settings, Wi-Fi switch highlighted                   |
+| `developer(context)`             | Developer options, or About phone when still disabled      |
+| `developerAt(context, key)`      | Developer options with an arbitrary preference highlighted |
+| `usbDebugging(context)`          | USB debugging switch highlighted                           |
+| `wirelessDebugging(context)`     | Wireless debugging switch highlighted                      |
+
+All builders add `FLAG_ACTIVITY_NEW_TASK`. The highlighted variants also add
+`FLAG_ACTIVITY_CLEAR_TASK` and `:settings:fragment_args_key`.
+
 ## ⚠️ Error handling
 
 Every failure throws `PrivKitException`:
