@@ -15,7 +15,9 @@ import 'models/file.dart';
 import 'models/permission.dart';
 import 'models/server_info.dart';
 import 'models/startup_log.dart';
+import 'models/system_settings.dart';
 import 'models/user_service.dart';
+import 'permissions.dart';
 
 /// Dart entry point of the Priv Kit plugin.
 ///
@@ -26,6 +28,9 @@ class PrivKit {
     : _platform = platform ?? PrivKitPlatform.instance;
 
   final PrivKitPlatform _platform;
+
+  /// Runtime permissions for this app, kept in a separate API surface.
+  late final PrivKitPermissions permissions = PrivKitPermissions(_platform);
 
   int _operationCounter = 0;
   int _commandCounter = 0;
@@ -969,6 +974,77 @@ class PrivKit {
       commandLine: commandLine,
       operationId: operationId,
     ),
+  );
+
+  /// Whether this device exposes a usable `su` binary.
+  ///
+  /// This is a pre-flight check before offering a Root start: it reads known
+  /// su/Magisk/KernelSU paths and the shell PATH, and never prompts for
+  /// authorization. It is different from `PrivServerInfo.isRoot`, which
+  /// describes an already connected server.
+  Future<bool> isRootAvailable() => _guard(_platform.isRootAvailable);
+
+  /// Whether the Android Wi-Fi switch is on.
+  Future<bool> isWifiEnabled() => _guard(_platform.isWifiEnabled);
+
+  /// Whether the device is connected to a Wi-Fi network.
+  ///
+  /// A Wi-Fi network without Internet access still counts: local networking
+  /// (mDNS, ADB over Wi-Fi) works on such networks.
+  Future<bool> isWifiConnected() => _guard(_platform.isWifiConnected);
+
+  /// Whether Wi-Fi is on and connected, as required by wireless debugging.
+  Future<bool> isWifiReady() => _guard(_platform.isWifiReady);
+
+  /// Whether Android Developer options are enabled.
+  Future<bool> isDeveloperModeEnabled() =>
+      _guard(_platform.isDeveloperModeEnabled);
+
+  /// Whether Android USB debugging is enabled.
+  Future<bool> isUsbDebuggingEnabled() =>
+      _guard(_platform.isUsbDebuggingEnabled);
+
+  /// Whether Android Wireless debugging is enabled (API 30+).
+  Future<bool> isWirelessDebuggingEnabled() =>
+      _guard(_platform.isWirelessDebuggingEnabled);
+
+  /// Opens system Wi-Fi settings, highlighting the Wi-Fi switch where the ROM
+  /// supports AOSP's `fragment_args_key` extra.
+  ///
+  /// Returns `false` when no Activity can handle the Intent.
+  Future<bool> openWifiSettings() => _guard(_platform.openWifiSettings);
+
+  /// Opens Developer options, or About phone (with the build number
+  /// highlighted) when Developer options are not enabled yet.
+  Future<bool> openDeveloperSettings() =>
+      _guard(_platform.openDeveloperSettings);
+
+  /// Opens the USB debugging switch inside Developer options.
+  Future<bool> openUsbDebuggingSettings() =>
+      _guard(_platform.openUsbDebuggingSettings);
+
+  /// Opens Wireless debugging inside Developer options.
+  ///
+  /// When Wi-Fi is not on and connected, native code opens Wi-Fi settings
+  /// instead: Android will not let the user enable Wireless debugging without
+  /// a Wi-Fi connection.
+  Future<bool> openWirelessDebuggingSettings() =>
+      _guard(_platform.openWirelessDebuggingSettings);
+
+  /// Live combined state for a wireless debugging start flow.
+  ///
+  /// Reads both switches on every call; Developer options are checked first
+  /// because the wireless switch is hidden when they are off.
+  Future<PrivDeveloperModeStatus> checkDeveloperModeStatus() async =>
+      privDeveloperModeStatus(
+        developerOptionsEnabled: await isDeveloperModeEnabled(),
+        wirelessDebuggingEnabled: await isWirelessDebuggingEnabled(),
+      );
+
+  /// Live combined state for a manual (`adb shell`) start flow.
+  Future<PrivUsbDebugStatus> checkUsbDebugStatus() async => privUsbDebugStatus(
+    developerOptionsEnabled: await isDeveloperModeEnabled(),
+    usbDebuggingEnabled: await isUsbDebuggingEnabled(),
   );
 
   Future<T> _guard<T>(Future<T> Function() body) async {

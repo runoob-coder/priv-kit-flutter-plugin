@@ -74,7 +74,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.23.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.24.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -89,6 +89,18 @@ See the [Android Example Project][Android Example].
 android {
     defaultConfig {
         minSdk = 26
+    }
+}
+```
+
+priv-core 0.24.0 also requires compile SDK 37.1:
+
+```kotlin
+android {
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
     }
 }
 ```
@@ -154,6 +166,32 @@ the connect port during startup:
 <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
     tools:ignore="ProtectedPermissions" />
 ```
+
+### 5️⃣ System settings detection (optional)
+
+`isWifiConnected()` / `isWifiReady()` query `ConnectivityManager`, so the host
+app must declare:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+
+Developer options, USB debugging and Wireless debugging checks read
+`Settings.Global` and need no permission. Navigation uses
+`:settings:fragment_args_key` extras and gracefully falls back to plain
+System Settings Intents on ROMs that ignore them.
+
+### 6️⃣ Host runtime permissions (optional)
+
+Needed only when using `privKit.permissions`:
+
+```xml
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+```
+
+Both calls return `true` below their API level (33 and 37 respectively); the
+plugin asks the current Flutter Activity and reports the result to Dart.
 
 ## 🚀 Quick start
 
@@ -940,6 +978,74 @@ await privKit.closeSession(sessionId);
 
 `adbSwitchToTcp`, `adbStopTcp` and `adbRestartTcp` affect every process that
 depends on ADB, so confirm with the user first.
+
+## 📶 Android system settings
+
+Android-only helpers for detecting and opening the switches needed by ADB
+startup. They work without a connected Privileged Server; `false` means "off",
+"not connected" or "no Activity could handle the Intent", depending on the call.
+
+| Call                                | Purpose                                                    |
+|-------------------------------------|------------------------------------------------------------|
+| `isRootAvailable`                   | pre-flight check for a usable `su` binary                  |
+| `isWifiEnabled`                     | Wi-Fi switch (`Settings.Global.wifi_on`)                   |
+| `isWifiConnected`                   | connected to a Wi-Fi network, Internet capability not needed |
+| `isWifiReady`                       | Wi-Fi on **and** connected                                 |
+| `isDeveloperModeEnabled`            | Developer options enabled                                  |
+| `isUsbDebuggingEnabled`             | USB debugging switch on                                    |
+| `isWirelessDebuggingEnabled`        | Wireless debugging switch on (API 30+)                     |
+| `openWifiSettings`                  | open Wi-Fi settings, highlight the Wi-Fi switch            |
+| `openDeveloperSettings`             | Developer options, or About phone when still disabled      |
+| `openUsbDebuggingSettings`          | highlight the USB debugging switch                         |
+| `openWirelessDebuggingSettings`     | highlight Wireless debugging, or open Wi-Fi if not ready   |
+| `checkDeveloperModeStatus`          | combined live state for a wireless debugging flow          |
+| `checkUsbDebugStatus`               | combined live state for a manual `adb shell` flow          |
+
+```dart
+if (await privKit.isWifiReady()) {
+  if (await privKit.checkDeveloperModeStatus() ==
+      PrivDeveloperModeStatus.ready) {
+    await privKit.startAdb();
+  } else {
+    await privKit.openWirelessDebuggingSettings();
+  }
+} else {
+  await privKit.openWifiSettings();
+}
+```
+
+`openWirelessDebuggingSettings()` already redirects to Wi-Fi settings when
+Wi-Fi is off or disconnected, because Android refuses to enable Wireless
+debugging without a Wi-Fi connection.
+
+`isRootAvailable()` is a pre-flight check only: it never prompts for
+authorization and does not mean a root server is connected. Check
+`serverState` / `PrivServerInfo.isRoot` for that.
+
+## 🔐 Host app permissions
+
+Runtime permissions for **this app** live in their own class,
+`PrivKitPermissions`, available as `privKit.permissions`. Do not confuse them
+with `checkPermission` / `grantRuntimePermission`, which act on a package
+through a connected Privileged Server.
+
+| Call                                          | Purpose                                      |
+|-----------------------------------------------|----------------------------------------------|
+| `hasNotificationPermission`                   | `POST_NOTIFICATIONS` state (true below API 33) |
+| `requestNotificationPermission`               | ask the current Activity for notifications   |
+| `openNotificationPermissionSettings`          | notification settings, app-details fallback  |
+| `hasLocalNetworkPermission`                   | `ACCESS_LOCAL_NETWORK` state (true below API 37) |
+| `requestLocalNetworkPermission`               | ask the current Activity for local network   |
+| `openLocalNetworkPermissionSettings`          | permission list, app-details fallback        |
+
+```dart
+if (!await privKit.permissions.hasNotificationPermission()) {
+  final granted = await privKit.permissions.requestNotificationPermission();
+  if (!granted) {
+    await privKit.permissions.openNotificationPermissionSettings();
+  }
+}
+```
 
 ## ⚠️ Error handling
 

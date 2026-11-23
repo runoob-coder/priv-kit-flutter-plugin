@@ -1,12 +1,16 @@
 package com.noob_coder.priv_kit
 
+import android.app.Activity
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +37,7 @@ import java.io.File
  * Method channel: `priv_kit`
  * Event channels: `priv_kit/server_state`, `priv_kit/startup_log`
  */
-class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
+class PrivKitPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler {
     private lateinit var methodChannel: MethodChannel
     private lateinit var serverStateChannel: EventChannel
     private lateinit var startupLogChannel: EventChannel
@@ -47,6 +51,15 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var files: PrivKitFiles
     private val userServices = PrivKitUserServices()
     private val binders = PrivKitBinders(userServices)
+    private val systemSettings = PrivKitSystemSettings
+    private val root = PrivKitRoot
+    private lateinit var hostPermissions: PrivKitHostPermissions
+    private var currentActivity: Activity? = null
+    private var activityBinding: ActivityPluginBinding? = null
+    private val permissionResultListener =
+        PluginRegistry.RequestPermissionsResultListener { code, _, grantResults ->
+            hostPermissions.onRequestPermissionsResult(code, grantResults)
+        }
     private val operations = HashMap<String, Job>()
     private val operationLock = Any()
     private var serverStateJob: Job? = null
@@ -56,6 +69,7 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         appContext = flutterPluginBinding.applicationContext
+        hostPermissions = PrivKitHostPermissions(appContext)
         val messenger = flutterPluginBinding.binaryMessenger
         methodChannel = MethodChannel(messenger, METHOD_CHANNEL)
         methodChannel.setMethodCallHandler(this)
@@ -323,6 +337,24 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 result.success(null)
             }
 
+            "hasNotificationPermission" ->
+                result.success(hostPermissions.hasNotificationPermission())
+
+            "requestNotificationPermission" ->
+                hostPermissions.requestNotificationPermission(currentActivity, result)
+
+            "openNotificationPermissionSettings" ->
+                result.success(hostPermissions.openNotificationPermissionSettings())
+
+            "hasLocalNetworkPermission" ->
+                result.success(hostPermissions.hasLocalNetworkPermission())
+
+            "requestLocalNetworkPermission" ->
+                hostPermissions.requestLocalNetworkPermission(currentActivity, result)
+
+            "openLocalNetworkPermissionSettings" ->
+                result.success(hostPermissions.openLocalNetworkPermissionSettings())
+
             else -> when {
                 adb.handles(call.method) -> runAsync(result) {
                     adb.invoke(call.method, call)
@@ -385,12 +417,46 @@ class PrivKitPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     }
                 }
 
+                systemSettings.handles(call.method) -> runAsync(result) {
+                    systemSettings.invoke(call.method, appContext)
+                }
+
+                root.handles(call.method) -> runAsync(result) {
+                    root.invoke()
+                }
+
                 else -> result.notImplemented()
             }
         }
     }
 
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        currentActivity = binding.activity
+        activityBinding = binding
+        binding.addRequestPermissionsResultListener(permissionResultListener)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        detachActivity()
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        onAttachedToActivity(binding)
+    }
+
+    override fun onDetachedFromActivity() {
+        detachActivity()
+    }
+
+    private fun detachActivity() {
+        activityBinding?.removeRequestPermissionsResultListener(permissionResultListener)
+        activityBinding = null
+        currentActivity = null
+        if (::hostPermissions.isInitialized) hostPermissions.cancelPending()
+    }
+
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        detachActivity()
         methodChannel.setMethodCallHandler(null)
         serverStateChannel.setStreamHandler(null)
         startupLogChannel.setStreamHandler(null)

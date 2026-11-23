@@ -728,4 +728,119 @@ abstract class PrivKitPlatform extends PlatformInterface {
   }) {
     throw UnimplementedError('externalStartRun() has not been implemented.');
   }
+
+  /// Whether the Android Wi-Fi switch is on (`Settings.Global.wifi_on`).
+  Future<bool> isWifiEnabled() {
+    throw UnimplementedError('isWifiEnabled() has not been implemented.');
+  }
+
+  /// Whether the device is connected to a Wi-Fi network.
+  ///
+  /// Ethernet or other transports are not counted; a Wi-Fi network without
+  /// Internet capability still counts because local networking works.
+  Future<bool> isWifiConnected() {
+    throw UnimplementedError('isWifiConnected() has not been implemented.');
+  }
+
+  /// Whether Wi-Fi is on and connected, the prerequisite for wireless ADB.
+  Future<bool> isWifiReady() {
+    throw UnimplementedError('isWifiReady() has not been implemented.');
+  }
+
+  /// Whether Android Developer options are enabled.
+  Future<bool> isDeveloperModeEnabled() {
+    throw UnimplementedError(
+      'isDeveloperModeEnabled() has not been implemented.',
+    );
+  }
+
+  /// Whether the Android USB debugging switch is on.
+  Future<bool> isUsbDebuggingEnabled() {
+    throw UnimplementedError(
+      'isUsbDebuggingEnabled() has not been implemented.',
+    );
+  }
+
+  /// Whether the Android Wireless debugging switch is on (API 30+).
+  Future<bool> isWirelessDebuggingEnabled() {
+    throw UnimplementedError(
+      'isWirelessDebuggingEnabled() has not been implemented.',
+    );
+  }
+
+  /// Opens system Wi-Fi settings; returns whether an Activity was found.
+  Future<bool> openWifiSettings() {
+    throw UnimplementedError('openWifiSettings() has not been implemented.');
+  }
+
+  /// Opens Developer options, or About phone when they are not enabled yet.
+  Future<bool> openDeveloperSettings() {
+    throw UnimplementedError(
+      'openDeveloperSettings() has not been implemented.',
+    );
+  }
+
+  /// Opens the USB debugging switch inside Developer options.
+  Future<bool> openUsbDebuggingSettings() {
+    throw UnimplementedError(
+      'openUsbDebuggingSettings() has not been implemented.',
+    );
+  }
+
+  /// Opens Wireless debugging, or Wi-Fi settings when Wi-Fi is not ready.
+  Future<bool> openWirelessDebuggingSettings() {
+    throw UnimplementedError(
+      'openWirelessDebuggingSettings() has not been implemented.',
+    );
+  }
+
+  /// Whether this device exposes a usable `su` binary.
+  ///
+  /// Different from a successfully started root server: this is a pre-flight
+  /// check that never prompts for authorization.
+  Future<bool> isRootAvailable() {
+    throw UnimplementedError('isRootAvailable() has not been implemented.');
+  }
+
+  /// Whether this app may post notifications (always true below API 33).
+  Future<bool> hasNotificationPermission() {
+    throw UnimplementedError(
+      'hasNotificationPermission() has not been implemented.',
+    );
+  }
+
+  /// Requests `POST_NOTIFICATIONS` from this app's current Activity.
+  Future<bool> requestNotificationPermission() {
+    throw UnimplementedError(
+      'requestNotificationPermission() has not been implemented.',
+    );
+  }
+
+  /// Opens this app's notification settings, with an app-details fallback.
+  Future<bool> openNotificationPermissionSettings() {
+    throw UnimplementedError(
+      'openNotificationPermissionSettings() has not been implemented.',
+    );
+  }
+
+  /// Whether this app may access the local network (always true below API 37).
+  Future<bool> hasLocalNetworkPermission() {
+    throw UnimplementedError(
+      'hasLocalNetworkPermission() has not been implemented.',
+    );
+  }
+
+  /// Requests `ACCESS_LOCAL_NETWORK` from this app's current Activity.
+  Future<bool> requestLocalNetworkPermission() {
+    throw UnimplementedError(
+      'requestLocalNetworkPermission() has not been implemented.',
+    );
+  }
+
+  /// Opens this app's permission list, with an app-details fallback.
+  Future<bool> openLocalNetworkPermissionSettings() {
+    throw UnimplementedError(
+      'openLocalNetworkPermissionSettings() has not been implemented.',
+    );
+  }
 }

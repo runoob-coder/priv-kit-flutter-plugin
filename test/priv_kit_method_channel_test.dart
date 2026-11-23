@@ -716,4 +716,84 @@ void main() {
       expect(run.arguments['operationId'], 'op');
     },
   );
+
+  test('system setting calls use the expected method names', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return true;
+        });
+
+    final results = await Future.wait<bool>([
+      platform.isWifiEnabled(),
+      platform.isWifiConnected(),
+      platform.isWifiReady(),
+      platform.isDeveloperModeEnabled(),
+      platform.isUsbDebuggingEnabled(),
+      platform.isWirelessDebuggingEnabled(),
+      platform.openWifiSettings(),
+      platform.openDeveloperSettings(),
+      platform.openUsbDebuggingSettings(),
+      platform.openWirelessDebuggingSettings(),
+    ]);
+
+    expect(results, List<bool>.filled(10, true));
+    expect(
+      log.map((call) => call.method),
+      orderedEquals(const <String>[
+        'isWifiEnabled',
+        'isWifiConnected',
+        'isWifiReady',
+        'isDeveloperModeEnabled',
+        'isUsbDebuggingEnabled',
+        'isWirelessDebuggingEnabled',
+        'openWifiSettings',
+        'openDeveloperSettings',
+        'openUsbDebuggingSettings',
+        'openWirelessDebuggingSettings',
+      ]),
+    );
+    expect(log.every((call) => call.arguments == null), isTrue);
+  });
+
+  test('system setting bools default to false when native returns null', () async {
+    expect(await platform.isWirelessDebuggingEnabled(), isFalse);
+    expect(await platform.openWifiSettings(), isFalse);
+    expect(log.map((call) => call.method), [
+      'isWirelessDebuggingEnabled',
+      'openWifiSettings',
+    ]);
+  });
+
+  test('root and host permission calls use the expected method names', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          log.add(methodCall);
+          return true;
+        });
+
+    final results = await Future.wait<bool>([
+      platform.isRootAvailable(),
+      platform.hasNotificationPermission(),
+      platform.requestNotificationPermission(),
+      platform.openNotificationPermissionSettings(),
+      platform.hasLocalNetworkPermission(),
+      platform.requestLocalNetworkPermission(),
+      platform.openLocalNetworkPermissionSettings(),
+    ]);
+
+    expect(results, List<bool>.filled(7, true));
+    expect(
+      log.map((call) => call.method),
+      orderedEquals(const <String>[
+        'isRootAvailable',
+        'hasNotificationPermission',
+        'requestNotificationPermission',
+        'openNotificationPermissionSettings',
+        'hasLocalNetworkPermission',
+        'requestLocalNetworkPermission',
+        'openLocalNetworkPermissionSettings',
+      ]),
+    );
+  });
 }

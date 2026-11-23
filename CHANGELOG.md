@@ -1,3 +1,27 @@
+## 0.24.0
+
+### Android system settings helpers
+
+Adds Wi-Fi state detection (`isWifiEnabled`, `isWifiConnected`, `isWifiReady`),
+Developer options / USB debugging / Wireless debugging detection, and the
+matching `open*Settings` navigation helpers. `checkDeveloperModeStatus` and
+`checkUsbDebugStatus` combine the switches into a single live state. These calls
+do not require a connected Privileged Server; Wi-Fi connection checks need
+`android.permission.ACCESS_NETWORK_STATE` in the host manifest.
+
+### Root detection and host permissions
+
+Adds `isRootAvailable()` for a pre-flight `su` check. Host-app notification and
+local-network permissions move into a dedicated `PrivKitPermissions` class
+(`privKit.permissions`) with query, request and settings-navigation methods.
+The plugin now implements `ActivityAware` to deliver runtime permission results
+back to Dart.
+
+### Upgrade priv-core 0.23.0 → 0.24.0
+
+Host apps must now compile against SDK 37.1
+(`compileSdk { version = release(37) { minorApiLevel = 1 } }`).
+
 ## 0.23.0
 
 ### Upgrade priv-core 0.22.0 → 0.23.0

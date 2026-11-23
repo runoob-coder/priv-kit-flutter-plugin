@@ -66,7 +66,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.23.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.24.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -80,6 +80,18 @@ flutter pub add priv_kit
 android {
     defaultConfig {
         minSdk = 26
+    }
+}
+```
+
+priv-core 0.24.0 还要求 compileSdk 37.1：
+
+```kotlin
+android {
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
     }
 }
 ```
@@ -143,6 +155,31 @@ dependencies {
 <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
     tools:ignore="ProtectedPermissions" />
 ```
+
+### 5️⃣ 系统设置检测（可选）
+
+`isWifiConnected()` / `isWifiReady()` 通过 `ConnectivityManager` 查询，
+宿主 App 需要声明：
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+
+开发者选项、USB 调试、无线调试的开关状态读的是 `Settings.Global`，无需权限。
+跳转会使用 `:settings:fragment_args_key` extra 高亮对应开关，忽略该 extra 的
+ROM 会自动回退到普通系统设置页。
+
+### 6️⃣ 宿主运行时权限（可选）
+
+只有使用 `privKit.permissions` 时才需要：
+
+```xml
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+```
+
+低于对应 API（33 / 37）时这两个权限的查询恒为 `true`；申请由当前 Flutter
+Activity 弹出，结果回传给 Dart。
 
 ## 🚀 快速开始
 
@@ -886,6 +923,70 @@ await privKit.closeSession(sessionId);
 
 `adbSwitchToTcp`、`adbStopTcp`、`adbRestartTcp` 会影响所有依赖 ADB 的进程，
 执行前应先征得用户确认。
+
+## 📶 Android 系统设置
+
+Android 专属能力，用于检测和跳转 ADB 启动所需开关。无需已连接的 Privileged
+Server；`false` 的含义随方法而变：开关关闭、未连接，或没有 Activity 能处理跳转。
+
+| 调用                                | 用途                                      |
+|-------------------------------------|-----------------------------------------|
+| `isRootAvailable`                   | 启动前探测是否存在可用的 `su`                  |
+| `isWifiEnabled`                     | Wi-Fi 开关（`Settings.Global.wifi_on`）       |
+| `isWifiConnected`                   | 已连接 Wi-Fi，不要求有外网                       |
+| `isWifiReady`                       | Wi-Fi 已开启且已连接                          |
+| `isDeveloperModeEnabled`            | 开发者选项已开启                              |
+| `isUsbDebuggingEnabled`             | USB 调试开关已打开                           |
+| `isWirelessDebuggingEnabled`        | 无线调试开关已打开（API 30+）                   |
+| `openWifiSettings`                  | 打开 Wi-Fi 设置并高亮开关                      |
+| `openDeveloperSettings`             | 打开开发者选项；未开启时打开「关于手机」               |
+| `openUsbDebuggingSettings`          | 高亮 USB 调试开关                           |
+| `openWirelessDebuggingSettings`     | 高亮无线调试开关；Wi-Fi 未就绪时改跳 Wi-Fi 设置     |
+| `checkDeveloperModeStatus`          | 无线调试启动流程的组合实时状态                     |
+| `checkUsbDebugStatus`               | 手动 `adb shell` 流程的组合实时状态              |
+
+```dart
+if (await privKit.isWifiReady()) {
+  if (await privKit.checkDeveloperModeStatus() ==
+      PrivDeveloperModeStatus.ready) {
+    await privKit.startAdb();
+  } else {
+    await privKit.openWirelessDebuggingSettings();
+  }
+} else {
+  await privKit.openWifiSettings();
+}
+```
+
+`openWirelessDebuggingSettings()` 在 Wi-Fi 关闭或未连接时会直接打开 Wi-Fi 设置：
+没有 Wi-Fi 连接时 Android 不允许打开无线调试。
+
+`isRootAvailable()` 只是启动前探测：不会弹授权框，也不代表已经连上 root 服务端。
+后者要看 `serverState` / `PrivServerInfo.isRoot`。
+
+## 🔐 宿主 App 权限
+
+本 App 自身的运行时权限单独放在 `PrivKitPermissions` 类中，通过
+`privKit.permissions` 访问。它和 `checkPermission` / `grantRuntimePermission`
+不同：后者是通过已连接的服务端操作某个包的权限。
+
+| 调用                                          | 用途                                       |
+|-----------------------------------------------|------------------------------------------|
+| `hasNotificationPermission`                   | 通知权限状态（API 33 以下恒为 true）           |
+| `requestNotificationPermission`               | 通过当前 Activity 申请通知权限                |
+| `openNotificationPermissionSettings`          | 通知设置页，失败回退应用详情                    |
+| `hasLocalNetworkPermission`                   | 本地网络权限状态（API 37 以下恒为 true）        |
+| `requestLocalNetworkPermission`               | 通过当前 Activity 申请本地网络权限              |
+| `openLocalNetworkPermissionSettings`          | 权限列表页，失败回退应用详情                    |
+
+```dart
+if (!await privKit.permissions.hasNotificationPermission()) {
+  final granted = await privKit.permissions.requestNotificationPermission();
+  if (!granted) {
+    await privKit.permissions.openNotificationPermissionSettings();
+  }
+}
+```
 
 ## ⚠️ 错误处理
 

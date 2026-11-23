@@ -444,6 +444,57 @@ class _FakePlatform extends PrivKitPlatform {
     required String commandLine,
     String? operationId,
   }) => Future.value('');
+
+  @override
+  Future<bool> isWifiEnabled() => Future.value(false);
+
+  @override
+  Future<bool> isWifiConnected() => Future.value(false);
+
+  @override
+  Future<bool> isWifiReady() => Future.value(false);
+
+  @override
+  Future<bool> isDeveloperModeEnabled() => Future.value(false);
+
+  @override
+  Future<bool> isUsbDebuggingEnabled() => Future.value(false);
+
+  @override
+  Future<bool> isWirelessDebuggingEnabled() => Future.value(false);
+
+  @override
+  Future<bool> openWifiSettings() => Future.value(true);
+
+  @override
+  Future<bool> openDeveloperSettings() => Future.value(true);
+
+  @override
+  Future<bool> openUsbDebuggingSettings() => Future.value(true);
+
+  @override
+  Future<bool> openWirelessDebuggingSettings() => Future.value(true);
+
+  @override
+  Future<bool> isRootAvailable() => Future.value(false);
+
+  @override
+  Future<bool> hasNotificationPermission() => Future.value(true);
+
+  @override
+  Future<bool> requestNotificationPermission() => Future.value(true);
+
+  @override
+  Future<bool> openNotificationPermissionSettings() => Future.value(true);
+
+  @override
+  Future<bool> hasLocalNetworkPermission() => Future.value(true);
+
+  @override
+  Future<bool> requestLocalNetworkPermission() => Future.value(true);
+
+  @override
+  Future<bool> openLocalNetworkPermissionSettings() => Future.value(true);
 }
 
 void main() {

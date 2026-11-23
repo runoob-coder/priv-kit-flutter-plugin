@@ -774,6 +774,87 @@ class MethodChannelPrivKit extends PrivKitPlatform {
           }) ??
       '';
 
+  @override
+  Future<bool> isWifiEnabled() async =>
+      await methodChannel.invokeMethod<bool>('isWifiEnabled') ?? false;
+
+  @override
+  Future<bool> isWifiConnected() async =>
+      await methodChannel.invokeMethod<bool>('isWifiConnected') ?? false;
+
+  @override
+  Future<bool> isWifiReady() async =>
+      await methodChannel.invokeMethod<bool>('isWifiReady') ?? false;
+
+  @override
+  Future<bool> isDeveloperModeEnabled() async =>
+      await methodChannel.invokeMethod<bool>('isDeveloperModeEnabled') ?? false;
+
+  @override
+  Future<bool> isUsbDebuggingEnabled() async =>
+      await methodChannel.invokeMethod<bool>('isUsbDebuggingEnabled') ?? false;
+
+  @override
+  Future<bool> isWirelessDebuggingEnabled() async =>
+      await methodChannel.invokeMethod<bool>('isWirelessDebuggingEnabled') ??
+      false;
+
+  @override
+  Future<bool> openWifiSettings() async =>
+      await methodChannel.invokeMethod<bool>('openWifiSettings') ?? false;
+
+  @override
+  Future<bool> openDeveloperSettings() async =>
+      await methodChannel.invokeMethod<bool>('openDeveloperSettings') ?? false;
+
+  @override
+  Future<bool> openUsbDebuggingSettings() async =>
+      await methodChannel.invokeMethod<bool>('openUsbDebuggingSettings') ??
+      false;
+
+  @override
+  Future<bool> openWirelessDebuggingSettings() async =>
+      await methodChannel.invokeMethod<bool>('openWirelessDebuggingSettings') ??
+      false;
+
+  @override
+  Future<bool> isRootAvailable() async =>
+      await methodChannel.invokeMethod<bool>('isRootAvailable') ?? false;
+
+  @override
+  Future<bool> hasNotificationPermission() async =>
+      await methodChannel.invokeMethod<bool>('hasNotificationPermission') ??
+      false;
+
+  @override
+  Future<bool> requestNotificationPermission() async =>
+      await methodChannel.invokeMethod<bool>('requestNotificationPermission') ??
+      false;
+
+  @override
+  Future<bool> openNotificationPermissionSettings() async =>
+      await methodChannel.invokeMethod<bool>(
+        'openNotificationPermissionSettings',
+      ) ??
+      false;
+
+  @override
+  Future<bool> hasLocalNetworkPermission() async =>
+      await methodChannel.invokeMethod<bool>('hasLocalNetworkPermission') ??
+      false;
+
+  @override
+  Future<bool> requestLocalNetworkPermission() async =>
+      await methodChannel.invokeMethod<bool>('requestLocalNetworkPermission') ??
+      false;
+
+  @override
+  Future<bool> openLocalNetworkPermissionSettings() async =>
+      await methodChannel.invokeMethod<bool>(
+        'openLocalNetworkPermissionSettings',
+      ) ??
+      false;
+
   Future<Map<dynamic, dynamic>> _requireMap(
     String method, [
     Map<String, Object?>? arguments,

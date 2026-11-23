@@ -15,5 +15,7 @@ export 'src/models/file.dart';
 export 'src/models/permission.dart';
 export 'src/models/server_info.dart';
 export 'src/models/startup_log.dart';
+export 'src/models/system_settings.dart';
 export 'src/models/user_service.dart';
+export 'src/permissions.dart';
 export 'src/priv_kit.dart';
