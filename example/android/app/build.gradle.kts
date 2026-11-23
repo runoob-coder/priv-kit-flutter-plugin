@@ -6,8 +6,12 @@ plugins {
 
 android {
     namespace = "com.noob_coder.priv_kit_example"
-    // priv-core 0.12.0 requires compileSdk 37 or later.
-    compileSdk = 37
+    // priv-core 0.24.0 requires compileSdk 37.1 or later.
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
