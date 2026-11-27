@@ -28,7 +28,7 @@ plugins {
 android {
     namespace = "com.noob_coder.priv_kit"
 
-    // priv-core 0.24.0 requires compileSdk 37.1 or later.
+    // priv-core 0.25.0 requires compileSdk 37.1+.
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
@@ -69,11 +69,10 @@ kotlin {
 }
 
 dependencies {
-    // `api`: host apps compile against priv-core types for UserServices,
-    // PrivilegeExternalStartupBridge and PrivilegeExternalStartProvider.
-    api("io.github.priv-kit:priv-core:0.24.0")
+    // Exposed so host apps can use priv-core types in their own Kotlin code.
+    api("io.github.priv-kit:priv-core:0.25.0")
 
-    // priv-core calls are suspend functions; declare the runtime explicitly.
+    // priv-core calls are suspend functions.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")

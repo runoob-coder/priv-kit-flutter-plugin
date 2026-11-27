@@ -410,9 +410,8 @@ class _MyAppState extends State<MyApp> {
   /// `DemoBinderBridge`.
   static const _binderChannel = MethodChannel('priv_kit_example/binder');
 
-  /// Process/UID choices mirroring `PrivilegeUserServiceProcess`.
   static const _processOptions = <PrivUserServiceProcess>[
-    PrivUserServiceProcess.dedicated,
+    PrivUserServiceProcess.inherit,
     PrivUserServiceProcess.embedded,
     PrivUserServiceProcess.root,
     PrivUserServiceProcess.system,
@@ -420,43 +419,39 @@ class _MyAppState extends State<MyApp> {
   ];
 
   static String _processLabel(PrivUserServiceProcess process) =>
-      switch (process.uid) {
-        null => 'dedicated',
-        privilegeUserServiceUidEmbedded => 'embedded (uid -1)',
-        privilegeUserServiceUidRoot => 'root (uid 0)',
-        privilegeUserServiceUidSystem => 'system (uid 1000)',
-        privilegeUserServiceUidShell => 'shell (uid 2000)',
-        _ => 'uid ${process.uid}',
-      };
+      '${process.wireName.toLowerCase()} (uid ${process.uid})';
 
   PrivUserServiceSpec _userServiceSpec(PrivUserServiceProcess process) =>
       PrivUserServiceSpec(
         serviceClassName: 'com.noob_coder.priv_kit_example.DemoPrivilegeService',
-        tag: 'demo-${process.uid ?? 'dedicated'}',
+        tag: 'demo-${process.wireName.toLowerCase()}',
         process: process,
       );
 
-  Future<void> _startUserService(PrivUserServiceProcess process) =>
-      _run(() async {
-        final spec = _userServiceSpec(process);
-        await _privKit.startUserService(spec);
-        _log('startUserService -> ${spec.tag} process=${spec.process}');
-      });
-
-  /// Dart can hold the connection handle, but cannot call the service with it.
+  /// Daemon mode keeps the instance alive after unbind, so peek can reconnect.
   Future<void> _bindUserService(PrivUserServiceProcess process) =>
       _run(() async {
         final handle = await _privKit.bindUserService(
           _userServiceSpec(process),
+          daemon: true,
         );
-        final info = await _privKit.userServiceConnectionInfo(handle);
         _log(
-          'bindUserService -> handle=$handle uid=${info.uid} '
-          'callingPackage=${info.callingPackageName} '
-          '(Binder cannot cross to Dart)',
+          'bindUserService -> handle=$handle '
+          'connected=${await _privKit.userServiceIsConnected(handle)}',
         );
         await _privKit.unbindUserService(handle);
         _log('unbindUserService -> handle=$handle');
+      });
+
+  Future<void> _peekUserService(PrivUserServiceProcess process) =>
+      _run(() async {
+        final handle = await _privKit.peekUserService(_userServiceSpec(process));
+        if (handle == null) {
+          _log('peekUserService -> no running instance');
+          return;
+        }
+        _log('peekUserService -> handle=$handle');
+        await _privKit.unbindUserService(handle);
       });
 
   /// The real call path: the example's Kotlin side binds the service, converts
@@ -465,20 +460,20 @@ class _MyAppState extends State<MyApp> {
       _run(() async {
         final uid = await _userServiceChannel.invokeMethod<String>(
           'call',
-          <String, Object?>{'processUid': process.uid, 'method': 'getUid'},
+          <String, Object?>{'process': process.wireName, 'method': 'getUid'},
         );
         _log('IDemoPrivilegeService.getUid() -> $uid');
 
         final isEmbedded = await _userServiceChannel.invokeMethod<bool>(
           'call',
-          <String, Object?>{'processUid': process.uid, 'method': 'isEmbedded'},
+          <String, Object?>{'process': process.wireName, 'method': 'isEmbedded'},
         );
         _log('IDemoPrivilegeService.isEmbedded() -> $isEmbedded');
 
         final sum = await _userServiceChannel.invokeMethod<int>(
           'call',
           <String, Object?>{
-            'processUid': process.uid,
+            'process': process.wireName,
             'method': 'add',
             'args': <String, Object?>{'a': 20, 'b': 22},
           },
@@ -577,15 +572,14 @@ class _MyAppState extends State<MyApp> {
     );
     final connection = await _privKit.bindUserService(spec);
     try {
-      final info = await _privKit.userServiceConnectionInfo(connection);
       final has = await _privKit.binderHasSystemService(
         serviceName,
         source: PrivBinderServiceSource.remoteProcess,
         userServiceHandle: connection,
       );
       _log(
-        'forwarded lookup($serviceName) -> has=$has uid=${info.uid} '
-        'callingPackage=${info.callingPackageName}',
+        'forwarded lookup($serviceName) -> has=$has '
+        'connected=${await _privKit.userServiceIsConnected(connection)}',
       );
       final handle = await _privKit.binderFromSystemService(
         serviceName,
@@ -758,8 +752,8 @@ class _MyAppState extends State<MyApp> {
               const SizedBox(height: 12),
               _UserServicePanel(
                 enabled: server != null && !_busy,
-                onStart: _startUserService,
                 onBind: _bindUserService,
+                onPeek: _peekUserService,
                 onCall: _callDemoUserService,
                 onStop: _stopUserService,
               ),
@@ -1145,15 +1139,15 @@ class _CommandPanelState extends State<_CommandPanel> {
 class _UserServicePanel extends StatefulWidget {
   const _UserServicePanel({
     required this.enabled,
-    required this.onStart,
     required this.onBind,
+    required this.onPeek,
     required this.onCall,
     required this.onStop,
   });
 
   final bool enabled;
-  final Future<void> Function(PrivUserServiceProcess process) onStart;
   final Future<void> Function(PrivUserServiceProcess process) onBind;
+  final Future<void> Function(PrivUserServiceProcess process) onPeek;
   final Future<void> Function(PrivUserServiceProcess process) onCall;
   final Future<void> Function(PrivUserServiceProcess process) onStop;
 
@@ -1162,7 +1156,7 @@ class _UserServicePanel extends StatefulWidget {
 }
 
 class _UserServicePanelState extends State<_UserServicePanel> {
-  var _process = PrivUserServiceProcess.dedicated;
+  var _process = PrivUserServiceProcess.embedded;
 
   @override
   Widget build(BuildContext context) {
@@ -1197,9 +1191,9 @@ class _UserServicePanelState extends State<_UserServicePanel> {
             runSpacing: 8,
             children: [
               _button(
-                label: l10n.btnStart,
+                label: l10n.btnPeek,
                 style: .tinted,
-                onPressed: enabled ? () => widget.onStart(_process) : null,
+                onPressed: enabled ? () => widget.onPeek(_process) : null,
               ),
               _button(
                 label: l10n.btnBind,

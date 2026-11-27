@@ -59,38 +59,25 @@ void main() {
       expect(kinds, ['stdout', 'stderr', 'exit']);
     });
 
-    test('PrivUserServiceProcess validates the supported UIDs', () {
-      expect(PrivUserServiceProcess.dedicated.uid, isNull);
+    test('PrivUserServiceProcess mirrors priv-core process options', () {
+      expect(PrivUserServiceProcess.values, hasLength(5));
+      expect(PrivUserServiceProcess.inherit.wireName, 'INHERIT');
       expect(PrivUserServiceProcess.embedded.isEmbedded, isTrue);
-      expect(
-        PrivUserServiceProcess(uid: privilegeUserServiceUidShell),
-        PrivUserServiceProcess.shell,
-      );
-      expect(() => PrivUserServiceProcess(uid: 42), throwsArgumentError);
-      for (final uid in const [
-        privilegeUserServiceUidEmbedded,
-        privilegeUserServiceUidRoot,
-        privilegeUserServiceUidSystem,
-        privilegeUserServiceUidShell,
-      ]) {
-        expect(PrivUserServiceProcess(uid: uid).uid, uid);
-      }
+      expect(PrivUserServiceProcess.shell.uid, 2000);
     });
 
-    test('PrivUserServiceSpec encodes the process and connection info', () {
+    test('PrivUserServiceSpec encodes the process', () {
       const spec = PrivUserServiceSpec(
         tag: 'shell-binder',
         process: PrivUserServiceProcess.shell,
       );
       expect(spec.serviceClassName, isNull);
-      expect(spec.toMap()['processUid'], privilegeUserServiceUidShell);
+      expect(spec.toMap()['process'], 'SHELL');
 
-      final info = PrivUserServiceConnectionInfo.fromMap(<dynamic, dynamic>{
-        'uid': 2000,
-        'callingPackageName': 'com.android.shell',
-      });
-      expect(info.uid, 2000);
-      expect(info.callingPackageName, 'com.android.shell');
+      const defaults = PrivUserServiceSpec();
+      expect(defaults.tag, isNull);
+      expect(defaults.process, PrivUserServiceProcess.embedded);
+      expect(defaults.toMap()['process'], 'EMBEDDED');
     });
   });
 }

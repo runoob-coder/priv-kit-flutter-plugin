@@ -189,22 +189,24 @@ class MethodChannelPrivKit extends PrivKitPlatform {
       });
 
   @override
-  Future<void> startUserService(PrivUserServiceSpec spec) =>
-      methodChannel.invokeMethod<void>('startUserService', spec.toMap());
-
-  @override
-  Future<int> bindUserService(PrivUserServiceSpec spec) async =>
-      await methodChannel.invokeMethod<int>('bindUserService', spec.toMap()) ??
+  Future<int> bindUserService(PrivUserServiceSpec spec, {bool daemon = false}) async =>
+      await methodChannel.invokeMethod<int>('bindUserService', <String, Object?>{
+        ...spec.toMap(),
+        'daemon': daemon,
+      }) ??
       -1;
 
   @override
-  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
-    int connectionHandle,
-  ) async => PrivUserServiceConnectionInfo.fromMap(
-    await _requireMap('userServiceConnectionInfo', <String, Object?>{
-      'connectionHandle': connectionHandle,
-    }),
-  );
+  Future<int?> peekUserService(PrivUserServiceSpec spec) =>
+      methodChannel.invokeMethod<int>('peekUserService', spec.toMap());
+
+  @override
+  Future<bool> userServiceIsConnected(int connectionHandle) async =>
+      await methodChannel
+          .invokeMethod<bool>('userServiceIsConnected', <String, Object?>{
+            'connectionHandle': connectionHandle,
+          }) ??
+      false;
 
   @override
   Future<void> unbindUserService(int connectionHandle) =>

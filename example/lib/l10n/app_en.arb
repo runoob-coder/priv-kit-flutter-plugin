@@ -198,7 +198,7 @@
   "@userServiceTitle": {
     "description": "Title of the UserService panel."
   },
-  "userServiceDesc": "DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app's own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.",
+  "userServiceDesc": "DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (inherited, embedded or a chosen UID). Dart drives bind/peek/stop; calling custom methods must go through the app's own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName uses the built-in Binder forwarding service.",
   "@userServiceDesc": {
     "description": "Description of the UserService panel."
   },
@@ -206,13 +206,13 @@
   "@userServiceProcess": {
     "description": "Title of the UserService process selector."
   },
-  "userServiceProcessSub": "Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain",
+  "userServiceProcessSub": "Inherited, embedded, root, system or shell; changing UID does not change the SELinux domain",
   "@userServiceProcessSub": {
     "description": "Subtitle of the UserService process selector."
   },
-  "btnStart": "Start",
-  "@btnStart": {
-    "description": "Button: start the service."
+  "btnPeek": "Peek",
+  "@btnPeek": {
+    "description": "Button: connect to a running service."
   },
   "btnBind": "Bind (get handle)",
   "@btnBind": {

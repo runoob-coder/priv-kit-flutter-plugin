@@ -71,8 +71,7 @@ internal class PrivKitBinders(
      */
     suspend fun serverLifecycle(): Int? {
         val lifecycle = withContext(Dispatchers.IO) {
-            // Throws PrivilegeServerUnavailableException when nothing is
-            // connected, which the plugin already maps for Dart.
+            // Maps to SERVER_UNAVAILABLE when nothing is connected.
             Privilege.getServerInfo().lifecycleBinder
         }
         return remember(lifecycle)

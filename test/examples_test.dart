@@ -88,20 +88,15 @@ class _FakePlatform extends PrivKitPlatform {
   Future<String> getNativeStarterCommand() => Future.value('starter');
 
   @override
-  Future<void> startUserService(PrivUserServiceSpec spec) async {}
+  Future<int> bindUserService(PrivUserServiceSpec spec, {bool daemon = false}) =>
+      Future.value(1);
 
   @override
-  Future<int> bindUserService(PrivUserServiceSpec spec) => Future.value(1);
+  Future<int?> peekUserService(PrivUserServiceSpec spec) => Future.value(1);
 
   @override
-  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
-    int connectionHandle,
-  ) => Future.value(
-    const PrivUserServiceConnectionInfo(
-      uid: 2000,
-      callingPackageName: 'com.android.shell',
-    ),
-  );
+  Future<bool> userServiceIsConnected(int connectionHandle) =>
+      Future.value(true);
 
   @override
   Future<bool> binderHasSystemService(
@@ -608,19 +603,21 @@ void main() {
     const userServiceSpec = PrivUserServiceSpec(
       serviceClassName: 'com.example.MyService',
     );
-    await privKit.startUserService(userServiceSpec);
-    final connection = await privKit.bindUserService(userServiceSpec);
+    final connection = await privKit.bindUserService(
+      userServiceSpec,
+      daemon: true,
+    );
+    expect(await privKit.userServiceIsConnected(connection), isTrue);
+    expect(await privKit.peekUserService(userServiceSpec), isNotNull);
     await privKit.unbindUserService(connection);
     await privKit.stopUserService(userServiceSpec);
 
-    // UserService UID selection and Binder forwarding through that connection.
+    // UserService process selection and Binder forwarding through that connection.
     const forwardingSpec = PrivUserServiceSpec(
       tag: 'shell-binder',
       process: PrivUserServiceProcess.shell,
     );
     final forwarding = await privKit.bindUserService(forwardingSpec);
-    final identity = await privKit.userServiceConnectionInfo(forwarding);
-    expect(identity.uid, privilegeUserServiceUidShell);
     expect(
       await privKit.binderHasSystemService(
         'activity',

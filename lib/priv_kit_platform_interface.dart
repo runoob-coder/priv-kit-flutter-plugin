@@ -188,26 +188,22 @@ abstract class PrivKitPlatform extends PlatformInterface {
     throw UnimplementedError('cancelOperation() has not been implemented.');
   }
 
-  /// Starts an app-defined UserService.
-  Future<void> startUserService(PrivUserServiceSpec spec) {
-    throw UnimplementedError('startUserService() has not been implemented.');
-  }
-
-  /// Binds an app-defined UserService and returns a connection handle.
+  /// Binds or reuses a UserService and returns a connection handle.
   ///
-  /// The underlying Binder cannot cross the platform channel, so Dart cannot
-  /// call the service's own AIDL methods. The handle exists so Dart can manage
-  /// the connection lifetime through [unbindUserService].
-  Future<int> bindUserService(PrivUserServiceSpec spec) {
+  /// [daemon] keeps the instance alive without connections.
+  Future<int> bindUserService(PrivUserServiceSpec spec, {bool daemon = false}) {
     throw UnimplementedError('bindUserService() has not been implemented.');
   }
 
-  /// Effective UID and calling package of a bound UserService connection.
-  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
-    int connectionHandle,
-  ) {
+  /// Connects to a running instance, or returns null when none matches.
+  Future<int?> peekUserService(PrivUserServiceSpec spec) {
+    throw UnimplementedError('peekUserService() has not been implemented.');
+  }
+
+  /// Whether a connection is still active.
+  Future<bool> userServiceIsConnected(int connectionHandle) {
     throw UnimplementedError(
-      'userServiceConnectionInfo() has not been implemented.',
+      'userServiceIsConnected() has not been implemented.',
     );
   }
 
@@ -216,7 +212,7 @@ abstract class PrivKitPlatform extends PlatformInterface {
     throw UnimplementedError('unbindUserService() has not been implemented.');
   }
 
-  /// Stops an app-defined UserService.
+  /// Stops a UserService and invalidates all its connections.
   Future<void> stopUserService(PrivUserServiceSpec spec) {
     throw UnimplementedError('stopUserService() has not been implemented.');
   }

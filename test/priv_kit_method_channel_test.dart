@@ -104,40 +104,7 @@ void main() {
     expect(revoked.arguments['userId'], 10);
   });
 
-  test('startUserService forwards the whole spec', () async {
-    await platform.startUserService(
-      const PrivUserServiceSpec(
-        serviceClassName: 'com.example.MyService',
-        tag: 'main',
-        version: 3,
-        process: PrivUserServiceProcess.shell,
-        daemon: true,
-      ),
-    );
-
-    final call = log.singleWhere((c) => c.method == 'startUserService');
-    expect(call.arguments['serviceClassName'], 'com.example.MyService');
-    expect(call.arguments['tag'], 'main');
-    expect(call.arguments['version'], 3);
-    expect(call.arguments['processUid'], privilegeUserServiceUidShell);
-    expect(call.arguments['daemon'], true);
-  });
-
-  test('startUserService can select the built-in forwarding service', () async {
-    await platform.startUserService(
-      const PrivUserServiceSpec(
-        tag: 'shell-binder',
-        process: PrivUserServiceProcess.shell,
-      ),
-    );
-
-    final call = log.singleWhere((c) => c.method == 'startUserService');
-    expect(call.arguments['serviceClassName'], isNull);
-    expect(call.arguments['tag'], 'shell-binder');
-    expect(call.arguments['processUid'], privilegeUserServiceUidShell);
-  });
-
-  test('bindUserService returns the connection handle', () async {
+  test('bindUserService forwards the spec and daemon flag', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           log.add(methodCall);
@@ -145,33 +112,53 @@ void main() {
         });
 
     final handle = await platform.bindUserService(
-      const PrivUserServiceSpec(serviceClassName: 'com.example.MyService'),
+      const PrivUserServiceSpec(
+        serviceClassName: 'com.example.MyService',
+        tag: 'main',
+        process: PrivUserServiceProcess.shell,
+      ),
+      daemon: true,
     );
 
     expect(handle, 42);
     final call = log.singleWhere((c) => c.method == 'bindUserService');
-    // Defaults are filled in on the Dart side.
-    expect(call.arguments['tag'], privilegeUserServiceDefaultTag);
-    expect(call.arguments['version'], 1);
-    expect(call.arguments['processUid'], isNull);
+    expect(call.arguments['serviceClassName'], 'com.example.MyService');
+    expect(call.arguments['tag'], 'main');
+    expect(call.arguments['process'], 'SHELL');
+    expect(call.arguments['daemon'], true);
+  });
+
+  test('bindUserService fills in the default process', () async {
+    await platform.bindUserService(
+      const PrivUserServiceSpec(tag: 'shell-binder'),
+    );
+
+    final call = log.singleWhere((c) => c.method == 'bindUserService');
+    expect(call.arguments['serviceClassName'], isNull);
+    expect(call.arguments['process'], 'EMBEDDED');
     expect(call.arguments['daemon'], false);
   });
 
-  test('userServiceConnectionInfo decodes the connection identity', () async {
+  test('peekUserService returns null when no instance matches', () async {
+    final handle = await platform.peekUserService(
+      const PrivUserServiceSpec(tag: 'missing'),
+    );
+
+    expect(handle, isNull);
+    final call = log.singleWhere((c) => c.method == 'peekUserService');
+    expect(call.arguments['tag'], 'missing');
+  });
+
+  test('userServiceIsConnected decodes the connection state', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           log.add(methodCall);
-          return <String, Object?>{
-            'uid': 2000,
-            'callingPackageName': 'com.android.shell',
-          };
+          return true;
         });
 
-    final info = await platform.userServiceConnectionInfo(9);
-    expect(info.uid, 2000);
-    expect(info.callingPackageName, 'com.android.shell');
+    expect(await platform.userServiceIsConnected(9), isTrue);
     final call = log.singleWhere(
-      (c) => c.method == 'userServiceConnectionInfo',
+      (c) => c.method == 'userServiceIsConnected',
     );
     expect(call.arguments['connectionHandle'], 9);
   });

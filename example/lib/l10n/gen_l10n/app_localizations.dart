@@ -359,7 +359,7 @@ abstract class AppLocalizations {
   /// Description of the UserService panel.
   ///
   /// In en, this message translates to:
-  /// **'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.'**
+  /// **'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (inherited, embedded or a chosen UID). Dart drives bind/peek/stop; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName uses the built-in Binder forwarding service.'**
   String get userServiceDesc;
 
   /// Title of the UserService process selector.
@@ -371,14 +371,14 @@ abstract class AppLocalizations {
   /// Subtitle of the UserService process selector.
   ///
   /// In en, this message translates to:
-  /// **'Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain'**
+  /// **'Inherited, embedded, root, system or shell; changing UID does not change the SELinux domain'**
   String get userServiceProcessSub;
 
-  /// Button: start the service.
+  /// Button: connect to a running service.
   ///
   /// In en, this message translates to:
-  /// **'Start'**
-  String get btnStart;
+  /// **'Peek'**
+  String get btnPeek;
 
   /// Button: bind the service.
   ///

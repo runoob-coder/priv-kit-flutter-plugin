@@ -11,7 +11,7 @@ import priv.kit.core.adb.PrivilegeAdbPairingResult
 import priv.kit.core.adb.PrivilegeAdbTcpResult
 import priv.kit.core.adb.PrivilegeAdbWirelessDebuggingControlStatus
 import android.os.DeadObjectException
-import priv.kit.core.binder.PrivilegeServerUnavailableException
+import priv.kit.core.binder.PrivilegeUnavailableException
 import priv.kit.core.command.PrivilegeCommandTimeoutException
 import android.system.ErrnoException
 import java.io.IOException
@@ -63,10 +63,8 @@ internal object PrivKitErrorCodes {
 internal fun Throwable.toPrivKitError(): PrivKitError {
     val code = when (this) {
         is PrivilegeStartupException -> PrivKitErrorCodes.STARTUP
-        is PrivilegeServerUnavailableException -> PrivKitErrorCodes.SERVER_UNAVAILABLE
-        // Must precede the broader RemoteException handling: a Binder call
-        // reports the endpoint's own death this way, which is distinct from the
-        // server being unavailable.
+        is PrivilegeUnavailableException -> PrivKitErrorCodes.SERVER_UNAVAILABLE
+        // Target Binder death, distinct from an unavailable channel.
         is DeadObjectException -> PrivKitErrorCodes.BINDER_DIED
         is PrivilegeCommandTimeoutException -> PrivKitErrorCodes.COMMAND_TIMEOUT
         // Must precede IOException, which now also covers command failures.

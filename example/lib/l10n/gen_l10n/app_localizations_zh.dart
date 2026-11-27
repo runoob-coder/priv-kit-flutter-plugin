@@ -148,17 +148,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get userServiceDesc =>
-      'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在所选特权进程（独立、嵌入或指定 UID）。插件的 start/stop 由 Dart 控制；调用自定义方法必须走 App 自己的 Kotlin 通道（见 DemoUserServiceBridge）。省略 serviceClassName 则启动内置 Binder 转发服务。';
+      'DemoPrivilegeService 是 App 自己写的 AIDL 服务，运行在所选特权进程（继承、嵌入或指定 UID）。Dart 负责 bind/peek/stop；调用自定义方法必须走 App 自己的 Kotlin 通道（见 DemoUserServiceBridge）。省略 serviceClassName 则使用内置 Binder 转发服务。';
 
   @override
   String get userServiceProcess => '运行进程 / UID';
 
   @override
   String get userServiceProcessSub =>
-      '独立、嵌入、root、system 或 shell；改 UID 不会改变 SELinux 域';
+      '继承、嵌入、root、system 或 shell；改 UID 不会改变 SELinux 域';
 
   @override
-  String get btnStart => '启动';
+  String get btnPeek => '连接已有实例';
 
   @override
   String get btnBind => '绑定（拿句柄）';

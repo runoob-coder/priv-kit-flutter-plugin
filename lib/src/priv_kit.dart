@@ -216,45 +216,30 @@ class PrivKit {
     ),
   );
 
-  /// Starts a UserService.
+  /// Binds or reuses a UserService and returns a connection handle.
   ///
-  /// The service is a Kotlin class you write, implementing an AIDL interface,
-  /// and it runs with the privileges of the process selected by
-  /// [PrivUserServiceSpec.process]. Omit `serviceClassName` to start
-  /// priv-core's built-in Binder forwarding service instead. See
-  /// [bindUserService] for how to reach it.
-  Future<void> startUserService(PrivUserServiceSpec spec) =>
-      _guard(() => _platform.startUserService(spec));
+  /// [daemon] keeps the instance alive after the last connection is released.
+  /// Use [peekUserService] to reconnect without changing that policy.
+  /// Dart cannot call AIDL methods with the handle; it only manages the
+  /// connection and can pass it as `userServiceHandle` to Binder calls.
+  Future<int> bindUserService(PrivUserServiceSpec spec, {bool daemon = false}) =>
+      _guard(() => _platform.bindUserService(spec, daemon: daemon));
 
-  /// Binds a UserService and returns a connection handle.
-  ///
-  /// **The Binder cannot cross the platform channel**, so Dart cannot call the
-  /// service's own AIDL methods. This call exists so Dart can manage the
-  /// connection lifetime: keep the handle and pass it to
-  /// [userServiceConnectionInfo], [binderFromSystemService] or
-  /// [unbindUserService].
-  ///
-  /// To invoke your service's methods, bind it from Kotlin, convert the Binder
-  /// with `YourService.Stub.asInterface(connection.binder)` and expose the
-  /// result to Dart through your own method channel.
-  Future<int> bindUserService(PrivUserServiceSpec spec) =>
-      _guard(() => _platform.bindUserService(spec));
+  /// Connects to a running UserService, or returns null if none matches.
+  Future<int?> peekUserService(PrivUserServiceSpec spec) =>
+      _guard(() => _platform.peekUserService(spec));
 
-  /// Effective UID and calling package of a bound UserService connection.
+  /// Whether a UserService connection is still active.
   ///
-  /// `callingPackageName` is `android` for UID 1000, `com.android.shell` for
-  /// UID 2000, and `null` for other UIDs. Pass it to system calls that require
-  /// a calling package identity. The connection must still be bound:
-  /// [unbindUserService] invalidates the handle.
-  Future<PrivUserServiceConnectionInfo> userServiceConnectionInfo(
-    int connectionHandle,
-  ) => _guard(() => _platform.userServiceConnectionInfo(connectionHandle));
+  /// Becomes false after unbind, stop, or process death.
+  Future<bool> userServiceIsConnected(int connectionHandle) =>
+      _guard(() => _platform.userServiceIsConnected(connectionHandle));
 
   /// Releases a connection handle returned by [bindUserService].
   Future<void> unbindUserService(int connectionHandle) =>
       _guard(() => _platform.unbindUserService(connectionHandle));
 
-  /// Stops a UserService.
+  /// Stops a UserService and invalidates all its connections.
   Future<void> stopUserService(PrivUserServiceSpec spec) =>
       _guard(() => _platform.stopUserService(spec));
 

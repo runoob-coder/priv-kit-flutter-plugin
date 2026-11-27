@@ -54,7 +54,7 @@ Binder 无法通过平台通道传递，Dart 拿到的是句柄而非 Binder 本
 |--------------|---------------------|
 | 平台           | 仅 Android           |
 | Android API  | 26+（Android 8.0）    |
-| `compileSdk` | 37+（`priv-core` 要求） |
+| `compileSdk` | 37.1+（`priv-core` 要求） |
 | Dart SDK     | ^3.12.0             |
 | Flutter      | >=3.44.0            |
 
@@ -66,7 +66,7 @@ flutter pub add priv_kit
 
 ## ⚙️ 宿主 App 配置
 
-插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.24.0），并以 `api`
+插件依赖 [`io.github.priv-kit:priv-core`][priv-core]（0.25.0），并以 `api`
 方式暴露，因此 priv-core 的类型就在宿主的编译 classpath 上：编写 UserService
 或注册外部启动 bridge 都无需额外声明。
 
@@ -84,7 +84,7 @@ android {
 }
 ```
 
-priv-core 0.24.0 还要求 compileSdk 37.1：
+priv-core 0.25.0 还要求 compileSdk 37.1+：
 
 ```kotlin
 android {
@@ -576,26 +576,26 @@ class MyPrivilegeService : IMyPrivilegeService.Stub {
 const spec = PrivUserServiceSpec(
   serviceClassName: 'com.example.MyPrivilegeService',
   tag: 'main',
-  version: 1,
-  process: PrivUserServiceProcess.dedicated,
-  daemon: false,
+  process: PrivUserServiceProcess.embedded,
 );
 
-await privKit.startUserService(spec);
-
-// Dart 能持有连接句柄，但无法用它调用服务方法
-final handle = await privKit.bindUserService(spec);
-final info = await privKit.userServiceConnectionInfo(handle);
-print('uid=${info.uid} callingPackage=${info.callingPackageName}');
+// Dart 持有连接句柄，而不是 Binder
+final handle = await privKit.bindUserService(spec, daemon: true);
+print(await privKit.userServiceIsConnected(handle));
 await privKit.unbindUserService(handle);
+
+// 重连已有 daemon 实例，不创建新实例
+final again = await privKit.peekUserService(spec);
+if (again != null) await privKit.unbindUserService(again);
 
 await privKit.stopUserService(spec);
 ```
 
-实例由 `serviceClassName` + `tag` 标识。实现不再兼容时提升 `version`，运行时会
-替换掉旧的运行实例。
+实例由 `serviceClassName` + `tag` 标识。`daemon` 是 `bindUserService` 的参数，
+再次绑定传 `false` 会关闭该策略；`peekUserService` 重连时不改策略。
+`stopUserService` 会销毁实例并让所有连接失效。
 
-省略 `serviceClassName` 会启动 priv-core 的内置 Binder 转发服务，无需 App 自定义
+省略 `serviceClassName` 会使用 priv-core 的内置 Binder 转发服务，无需 App 自定义
 类或 AIDL：
 
 ```dart
@@ -625,23 +625,18 @@ try {
 
 ### 选择进程与 UID
 
-`process` 对应 priv-core 0.18.0 的 `PrivilegeUserServiceProcess`（它替换了原来的
-`embedded` 布尔值）：
+`process` 对应 `PrivilegeUserServiceProcess`：
 
 | 选项 | `uid` | 执行方式 |
 |------|-------|---------|
-| `PrivUserServiceProcess.dedicated`（默认） | `null` | 独立 `app_process` 子进程，继承服务端 UID |
-| `PrivUserServiceProcess.embedded` | `-1` | 跑在 Privileged Server 进程内 |
+| `PrivUserServiceProcess.embedded`（默认） | `-1` | 特权服务端进程 |
+| `PrivUserServiceProcess.inherit` | `-2` | 独立子进程，继承服务端 UID |
 | `PrivUserServiceProcess.root` | `0` | 独立进程，root |
 | `PrivUserServiceProcess.system` | `1000` | 独立进程，`android` |
 | `PrivUserServiceProcess.shell` | `2000` | 独立进程，`com.android.shell` |
 
-只接受这几种 UID，`PrivUserServiceProcess(uid: ...)` 会拒绝其它值。改 UID **不会**
-改变继承的 SELinux 域，也不会把这个进程变成 Android 应用进程。
-
-独立进程拥有自己的生命周期，`destroy()` 可以用 `exitProcess(0)` 退出；嵌入式服务
-共享服务端进程，只能清理自身资源。`userServiceConnectionInfo()` 返回实际生效的
-UID，以及需要传给系统接口的调用方包名（`android`、`com.android.shell` 或 `null`）。
+改 UID 不会改变继承的 SELinux 域。独立进程拥有自己的生命周期，`destroy()` 可以
+用 `exitProcess(0)` 退出；嵌入式服务共享服务端进程，只能清理自身资源。
 
 ## 🔗 Binder 访问
 
@@ -750,14 +745,14 @@ final handle = await privKit.binderServerLifecycle();
 ### 处理调用失败
 
 经过 wrapper 转发的调用会保留 Binder 原本的异常。若失败后改用其他方式是安全的，
-可以用 `PrivilegeBinderCall.orElse` 区分两种死亡情况——`ServerUnavailable`
-与 `BinderDied`——其余异常保持不变：
+可以用 `PrivilegeBinderCall.orElse` 区分通道不可用（`Unavailable`）与目标 Binder
+死亡（`BinderDied`），其余异常保持不变：
 
 ```kotlin
 PrivilegeBinderCall.orElse(
     fallback = { failure ->
         when (failure) {
-            is PrivilegeBinderCallFailure.ServerUnavailable -> fallbackValue
+            is PrivilegeBinderCallFailure.Unavailable -> fallbackValue
             is PrivilegeBinderCallFailure.BinderDied -> fallbackValue
         }
     },

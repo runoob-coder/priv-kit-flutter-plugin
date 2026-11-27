@@ -366,14 +366,11 @@ class PrivKitPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHand
 
                 userServices.handles(call.method) -> runAsync(result) {
                     when (call.method) {
-                        "startUserService" -> {
-                            userServices.start(call)
-                            null
-                        }
-
                         "bindUserService" -> userServices.bind(call)
 
-                        "userServiceConnectionInfo" -> userServices.connectionInfo(call)
+                        "peekUserService" -> userServices.peek(call)
+
+                        "userServiceIsConnected" -> userServices.isConnected(call)
 
                         "unbindUserService" -> {
                             userServices.unbind(call)

@@ -62,7 +62,7 @@ side.
 |--------------|--------------------------------|
 | Platform     | Android only                   |
 | Android API  | 26+ (Android 8.0)              |
-| `compileSdk` | 37+ (required by `priv-core` ) |
+| `compileSdk` | 37.1+ (required by `priv-core`) |
 | Dart SDK     | ^3.12.0                        |
 | Flutter      | >=3.44.0                       |
 
@@ -74,7 +74,7 @@ flutter pub add priv_kit
 
 ## ⚙️ Host app setup
 
-The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.24.0) and
+The plugin depends on [`io.github.priv-kit:priv-core`][priv-core] (0.25.0) and
 exposes it as an `api` dependency, so priv-core types are on your compile
 classpath. Writing a UserService or registering an external startup bridge
 needs no extra declaration.
@@ -93,7 +93,7 @@ android {
 }
 ```
 
-priv-core 0.24.0 also requires compile SDK 37.1:
+priv-core 0.25.0 also requires compile SDK 37.1+:
 
 ```kotlin
 android {
@@ -605,28 +605,28 @@ with a secondary constructor taking `Context`.
 const spec = PrivUserServiceSpec(
   serviceClassName: 'com.example.MyPrivilegeService',
   tag: 'main',
-  version: 1,
-  process: PrivUserServiceProcess.dedicated,
-  daemon: false,
+  process: PrivUserServiceProcess.embedded,
 );
 
-await privKit.startUserService(spec);
-
-// Dart can hold the connection handle, but cannot call the service with it.
-final handle = await privKit.bindUserService(spec);
-final info = await privKit.userServiceConnectionInfo(handle);
-print('uid=${info.uid} callingPackage=${info.callingPackageName}');
+// Dart holds a handle, not the Binder.
+final handle = await privKit.bindUserService(spec, daemon: true);
+print(await privKit.userServiceIsConnected(handle));
 await privKit.unbindUserService(handle);
+
+// Reconnect to the daemon instance without creating a new one.
+final again = await privKit.peekUserService(spec);
+if (again != null) await privKit.unbindUserService(again);
 
 await privKit.stopUserService(spec);
 ```
 
-An instance is identified by `serviceClassName` plus `tag`. Bump `version` when
-the implementation is no longer compatible, and the runtime replaces the
-running instance.
+An instance is identified by `serviceClassName` plus `tag`. `daemon` belongs to
+`bindUserService`; rebinding with `false` clears daemon. Use `peekUserService`
+to reconnect without changing the policy. `stopUserService` destroys the
+instance and invalidates all its connections.
 
-Omit `serviceClassName` to start priv-core's built-in Binder forwarding
-service, which needs no app-defined class or AIDL:
+Omit `serviceClassName` to use priv-core's built-in Binder forwarding service,
+which needs no app-defined class or AIDL:
 
 ```dart
 const forwarding = PrivUserServiceSpec(
@@ -655,26 +655,20 @@ try {
 
 ### Choosing the process and UID
 
-`process` mirrors `PrivilegeUserServiceProcess` from priv-core 0.18.0 (which
-replaced the old `embedded` boolean):
+`process` mirrors `PrivilegeUserServiceProcess`:
 
 | Selection | `uid` | Execution |
 |-----------|-------|-----------|
-| `PrivUserServiceProcess.dedicated` (default) | `null` | separate `app_process` child inheriting the server UID |
-| `PrivUserServiceProcess.embedded` | `-1` | inside the Privileged Server process |
-| `PrivUserServiceProcess.root` | `0` | dedicated process as root |
-| `PrivUserServiceProcess.system` | `1000` | dedicated process as `android` |
-| `PrivUserServiceProcess.shell` | `2000` | dedicated process as `com.android.shell` |
+| `PrivUserServiceProcess.embedded` (default) | `-1` | privileged server process |
+| `PrivUserServiceProcess.inherit` | `-2` | dedicated child inheriting the server UID |
+| `PrivUserServiceProcess.root` | `0` | dedicated root process |
+| `PrivUserServiceProcess.system` | `1000` | dedicated `android` process |
+| `PrivUserServiceProcess.shell` | `2000` | dedicated `com.android.shell` process |
 
-Only these UIDs are accepted; `PrivUserServiceProcess(uid: ...)` rejects any
-other value. Changing the UID does **not** change the inherited SELinux domain
-or turn the process into an Android application process.
-
-A dedicated process owns its lifetime, so its `destroy()` can call
-`exitProcess(0)`. An embedded service shares the server process and may only
-release its own resources. `userServiceConnectionInfo()` reports the effective
-UID and the package identity (`android`, `com.android.shell` or `null`) to pass
-to system calls that require a calling package.
+Changing the UID does not change the inherited SELinux domain. A dedicated
+process owns its lifetime, so its `destroy()` can call `exitProcess(0)`. An
+embedded service shares the server process and may only release its own
+resources.
 
 ## 🔗 Binder access
 
@@ -791,15 +785,15 @@ rather than caching one across reconnections.
 ### Handling failures
 
 Calls forwarded through a wrapper keep the Binder's own exceptions. When
-falling back is safe, `PrivilegeBinderCall.orElse` separates the two death
-cases — `ServerUnavailable` and `BinderDied` — and leaves every other failure
-propagating unchanged:
+falling back is safe, `PrivilegeBinderCall.orElse` separates an unavailable
+channel (`Unavailable`) from a dead target Binder (`BinderDied`) and leaves
+other failures propagating unchanged:
 
 ```kotlin
 PrivilegeBinderCall.orElse(
     fallback = { failure ->
         when (failure) {
-            is PrivilegeBinderCallFailure.ServerUnavailable -> fallbackValue
+            is PrivilegeBinderCallFailure.Unavailable -> fallbackValue
             is PrivilegeBinderCallFailure.BinderDied -> fallbackValue
         }
     },

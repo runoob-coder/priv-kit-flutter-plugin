@@ -12,19 +12,7 @@ import priv.kit.core.Privilege
 import priv.kit.core.userservice.PrivilegeUserServiceProcess
 import priv.kit.core.userservice.PrivilegeUserServiceSpec
 
-/**
- * Shows how an app actually *calls* a UserService.
- *
- * Priv Kit returns a Binder, and a Binder cannot cross the Flutter platform
- * channel. The plugin's `bindUserService` therefore only lets Dart manage the
- * connection lifetime. Reaching the service's own AIDL methods has to happen
- * here, in Kotlin, and the results are handed back over this small channel.
- *
- * The example app drives the lifecycle through the plugin
- * (`startUserService` / `stopUserService`); this bridge only binds, calls and
- * unbinds. `processUid` selects dedicated / embedded / root / system / shell,
- * exactly as `PrivUserServiceSpec.process` does on the Dart side.
- */
+/** Calls the app's AIDL service in Kotlin; Binder cannot cross the channel. */
 internal class DemoUserServiceBridge(
     messenger: BinaryMessenger,
 ) {
@@ -40,16 +28,18 @@ internal class DemoUserServiceBridge(
     ) {
         when (call.method) {
             "call" -> {
-                val processUid = (call.argument<Number>("processUid"))?.toInt()
+                val processName = call.argument<String>("process")
                 val method = call.argument<String>("method")
                 val args = call.argument<Map<String, Any?>>("args").orEmpty()
-                if (method == null) {
-                    result.error("INVALID_ARGUMENT", "method is required", null)
+                if (processName == null || method == null) {
+                    result.error("INVALID_ARGUMENT", "process and method are required", null)
                     return
                 }
                 scope.launch {
                     try {
-                        result.success(withContext(Dispatchers.IO) { invoke(processUid, method, args) })
+                        result.success(
+                            withContext(Dispatchers.IO) { invoke(processName, method, args) },
+                        )
                     } catch (throwable: Throwable) {
                         result.error(
                             "DEMO_USER_SERVICE",
@@ -65,17 +55,14 @@ internal class DemoUserServiceBridge(
     }
 
     private suspend fun invoke(
-        processUid: Int?,
+        processName: String,
         method: String,
         args: Map<String, Any?>,
     ): Any? {
-        val process = PrivilegeUserServiceProcess(uid = processUid)
+        val process = PrivilegeUserServiceProcess.valueOf(processName)
         val spec = PrivilegeUserServiceSpec(
             serviceClassName = DemoPrivilegeService::class.java.name,
-            // Separate instances per process selection, so switching it does
-            // not replace a running service.
-            tag = "demo-${processUid ?: "dedicated"}",
-            version = 1,
+            tag = "demo-${process.name.lowercase()}",
             process = process,
         )
         val connection = Privilege.bindUserService(spec)

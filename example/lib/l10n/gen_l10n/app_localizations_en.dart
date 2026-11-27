@@ -152,17 +152,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get userServiceDesc =>
-      'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (dedicated, embedded or a chosen UID). The plugin controls start/stop from Dart; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName starts the built-in Binder forwarding service.';
+      'DemoPrivilegeService is an AIDL service written by the app, running in the selected privileged process (inherited, embedded or a chosen UID). Dart drives bind/peek/stop; calling custom methods must go through the app\'s own Kotlin channel (see DemoUserServiceBridge). Omitting serviceClassName uses the built-in Binder forwarding service.';
 
   @override
   String get userServiceProcess => 'Process / UID';
 
   @override
   String get userServiceProcessSub =>
-      'Dedicated, embedded, root, system or shell; changing UID does not change the SELinux domain';
+      'Inherited, embedded, root, system or shell; changing UID does not change the SELinux domain';
 
   @override
-  String get btnStart => 'Start';
+  String get btnPeek => 'Peek';
 
   @override
   String get btnBind => 'Bind (get handle)';

@@ -1,3 +1,18 @@
+## 0.25.0
+
+### Upgrade priv-core 0.24.0 → 0.25.0
+
+Upgrades priv-core to 0.25.0 and adopts its UserService lifecycle.
+
+**Breaking:** `startUserService()` and `userServiceConnectionInfo()` are gone;
+use `bindUserService()`, `peekUserService()` and `userServiceIsConnected()`.
+`daemon` moved from `PrivUserServiceSpec` to `bindUserService(daemon:)`;
+`version` was removed. `PrivUserServiceProcess.dedicated` is now `inherit`,
+and `embedded` is the default. `stopUserService()` destroys the instance and
+invalidates all its connections. Unavailable-channel errors now map to
+`PrivilegeUnavailableException`, and `PrivilegeBinderCallFailure.ServerUnavailable`
+is now `Unavailable`.
+
 ## 0.24.2
 
 `openLocalNetworkPermissionSettings()` becomes `openAppDetailsSettings()` and

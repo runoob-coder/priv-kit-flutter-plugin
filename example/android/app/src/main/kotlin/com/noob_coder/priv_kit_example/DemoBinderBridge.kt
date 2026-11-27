@@ -91,13 +91,11 @@ internal class DemoBinderBridge(
         // channel either, so write into the cache and read the text back.
         val output = File(cacheDir, "binder_dump.txt")
 
-        // A call can fail because the Privileged Server went away or because the
-        // endpoint itself died. When falling back is safe, orElse separates the
-        // two; anything else keeps propagating.
+        // Distinguish an unavailable channel from a dead target Binder.
         return PrivilegeBinderCall.orElse(
             fallback = { failure ->
                 when (failure) {
-                    is PrivilegeBinderCallFailure.ServerUnavailable ->
+                    is PrivilegeBinderCallFailure.Unavailable ->
                         "server unavailable: ${failure.exception.message}"
 
                     is PrivilegeBinderCallFailure.BinderDied ->

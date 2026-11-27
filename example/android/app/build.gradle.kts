@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.noob_coder.priv_kit_example"
-    // priv-core 0.24.0 requires compileSdk 37.1 or later.
+    // priv-core 0.25.0 requires compileSdk 37.1+.
     compileSdk {
         version = release(37) {
             minorApiLevel = 1
