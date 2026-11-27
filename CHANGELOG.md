@@ -1,3 +1,7 @@
+## 0.25.1
+
+Refreshes the project logo and screenshot. No API changes.
+
 ## 0.25.0
 
 ### Upgrade priv-core 0.24.0 → 0.25.0
