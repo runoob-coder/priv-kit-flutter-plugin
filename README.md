@@ -1,7 +1,7 @@
 # Priv Kit
 
 <div align="center">
-   <img src="https://raw.githubusercontent.com/runoob-coder/priv-kit-flutter-plugin/main/priv-kit-mark.svg" width="200" style="width: 200px;" alt="Priv Kit">
+   <img src="https://raw.githubusercontent.com/runoob-coder/priv-kit-flutter-plugin/main/android.svg" width="200" style="width: 200px;" alt="Priv Kit">
 </div>
 
 An app-owned privileged Android runtime

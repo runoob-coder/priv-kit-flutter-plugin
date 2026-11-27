@@ -16,7 +16,7 @@ topics:
 
 screenshots:
   - description: "Priv Kit Flutter Plugin"
-    path: priv-kit-mark.png
+    path: android.png
 
 environment:
   sdk: ^3.12.0
